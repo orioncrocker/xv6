@@ -531,7 +531,9 @@ kill(int pid)
 void
 procdumpP1(struct proc *p, char *state)
 {
-  cprintf("%d\t%s\t     %d\t\t%s\t%d\t", p->pid, p->name, p->start_ticks, state, p->sz);
+  uint seconds = p->start_ticks / 1000;
+  uint milli = p->start_ticks % 1000;
+  cprintf("%d\t%s\t     %d.%d\t%s\t%d\t", p->pid, p->name, seconds, milli, state, p->sz);
 }
 #endif
 
