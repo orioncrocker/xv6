@@ -109,6 +109,13 @@ extern int sys_halt(void);
 #ifdef CS333_P1
 extern int sys_date(void);
 #endif // CS333_P1
+#ifdef CS333_P2
+extern uint getuid(void);
+extern uint getgid(void);
+extern uint getppid(void);
+extern int setuid(uint);
+extern int setgid(uint);
+#endif  // CS333_P2
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -138,6 +145,13 @@ static int (*syscalls[])(void) = {
 #ifdef CS333_P1
 [SYS_date]    sys_date,
 #endif // CS333_P1
+#ifdef CS333_P2
+[SYS_getuid]  sys_getuid,
+[SYS_getgid]  sys_getgid,
+[SYS_getppid] sys_getppid,
+[SYS_setuid]  sys_setuid,
+[SYS_setgid]  sys_setgid,
+#endif  //  CS333_P2
 };
 
 #ifdef PRINT_SYSCALLS
@@ -169,6 +183,13 @@ static char *syscallnames[] = {
 #ifdef CS333_P1
   [SYS_date]    "date",
 #endif
+#ifdef CS333_P2
+  [SYS_getuid]  "getuid",
+  [SYS_getgid]  "getgid",
+  [SYS_getppid] "getppid",
+  [SYS_setuid]  "setuid",
+  [SYS_setgid]  "sys_setgid",
+#endif  //  CS333_P2
 };
 #endif // PRINT_SYSCALLS
 

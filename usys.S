@@ -31,3 +31,8 @@ SYSCALL(sleep)
 SYSCALL(uptime)
 SYSCALL(halt)
 SYSCALL(date) // CS333_P1
+SYSCALL(getuid) // CS333_P2
+SYSCALL(getgid) // P2
+SYSCALL(getppid) // P2
+SYSCALL(setuid) // P2
+SYSCALL(setgid) // P2

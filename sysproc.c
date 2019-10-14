@@ -112,3 +112,31 @@ sys_date(void)
   return 0;
 }
 #endif
+
+#ifdef CS333_P2
+uint
+getuid(void)
+{
+
+}
+
+uint
+getgid(void)
+{
+}
+
+uint
+getppid(void)
+{
+}
+
+int
+setuid(uint)
+{
+}
+
+int
+setgid(uint)
+{
+}
+#endif
