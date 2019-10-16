@@ -110,47 +110,49 @@ extern int sys_halt(void);
 extern int sys_date(void);
 #endif // CS333_P1
 #ifdef CS333_P2
-extern uint getuid(void);
-extern uint getgid(void);
-extern uint getppid(void);
-extern int setuid(uint);
-extern int setgid(uint);
+extern int sys_getuid(void);
+extern int sys_getgid(void);
+extern int sys_getppid(void);
+extern int sys_setuid(void);
+extern int sys_setgid(void);
+extern int sys_getprocs(void);
 #endif  // CS333_P2
 
 static int (*syscalls[])(void) = {
-[SYS_fork]    sys_fork,
-[SYS_exit]    sys_exit,
-[SYS_wait]    sys_wait,
-[SYS_pipe]    sys_pipe,
-[SYS_read]    sys_read,
-[SYS_kill]    sys_kill,
-[SYS_exec]    sys_exec,
-[SYS_fstat]   sys_fstat,
-[SYS_chdir]   sys_chdir,
-[SYS_dup]     sys_dup,
-[SYS_getpid]  sys_getpid,
-[SYS_sbrk]    sys_sbrk,
-[SYS_sleep]   sys_sleep,
-[SYS_uptime]  sys_uptime,
-[SYS_open]    sys_open,
-[SYS_write]   sys_write,
-[SYS_mknod]   sys_mknod,
-[SYS_unlink]  sys_unlink,
-[SYS_link]    sys_link,
-[SYS_mkdir]   sys_mkdir,
-[SYS_close]   sys_close,
+[SYS_fork]      sys_fork,
+[SYS_exit]      sys_exit,
+[SYS_wait]      sys_wait,
+[SYS_pipe]      sys_pipe,
+[SYS_read]      sys_read,
+[SYS_kill]      sys_kill,
+[SYS_exec]      sys_exec,
+[SYS_fstat]     sys_fstat,
+[SYS_chdir]     sys_chdir,
+[SYS_dup]       sys_dup,
+[SYS_getpid]    sys_getpid,
+[SYS_sbrk]      sys_sbrk,
+[SYS_sleep]     sys_sleep,
+[SYS_uptime]    sys_uptime,
+[SYS_open]      sys_open,
+[SYS_write]     sys_write,
+[SYS_mknod]     sys_mknod,
+[SYS_unlink]    sys_unlink,
+[SYS_link]      sys_link,
+[SYS_mkdir]     sys_mkdir,
+[SYS_close]     sys_close,
 #ifdef PDX_XV6
-[SYS_halt]    sys_halt,
+[SYS_halt]      sys_halt,
 #endif // PDX_XV6
 #ifdef CS333_P1
-[SYS_date]    sys_date,
+[SYS_date]      sys_date,
 #endif // CS333_P1
 #ifdef CS333_P2
-[SYS_getuid]  sys_getuid,
-[SYS_getgid]  sys_getgid,
-[SYS_getppid] sys_getppid,
-[SYS_setuid]  sys_setuid,
-[SYS_setgid]  sys_setgid,
+[SYS_getuid]    sys_getuid,
+[SYS_getgid]    sys_getgid,
+[SYS_getppid]   sys_getppid,
+[SYS_setuid]    sys_setuid,
+[SYS_setgid]    sys_setgid,
+[SYS_getprocs]  sys_getprocs,
 #endif  //  CS333_P2
 };
 
@@ -177,19 +179,20 @@ static char *syscallnames[] = {
   [SYS_link]    "link",
   [SYS_mkdir]   "mkdir",
   [SYS_close]   "close",
-#ifdef PDX_XV6
+  #ifdef PDX_XV6
   [SYS_halt]    "halt",
-#endif // PDX_XV6
-#ifdef CS333_P1
+  #endif // PDX_XV6
+  #ifdef CS333_P1
   [SYS_date]    "date",
-#endif
-#ifdef CS333_P2
+  #endif
+  #ifdef CS333_P2
   [SYS_getuid]  "getuid",
   [SYS_getgid]  "getgid",
   [SYS_getppid] "getppid",
   [SYS_setuid]  "setuid",
   [SYS_setgid]  "sys_setgid",
-#endif  //  CS333_P2
+  [SYS_getprocs]  "sys_getprocs",
+  #endif  //  CS333_P2
 };
 #endif // PRINT_SYSCALLS
 
@@ -202,9 +205,9 @@ syscall(void)
   num = curproc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     curproc->tf->eax = (syscalls[num])();
-#ifdef PRINT_SYSCALLS
+    #ifdef PRINT_SYSCALLS
     cprintf("%s -> %d\n", syscallnames[num], curproc->tf->eax);
-#endif
+    #endif
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             curproc->pid, curproc->name, num);

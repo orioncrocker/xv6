@@ -19,6 +19,15 @@
 #define TPS 1000   // ticks-per-second
 #define SCHED_INTERVAL (TPS/100)  // see trap.c
 
+#ifdef CS333_P2
+#define DEFAULT_UID 0
+#define DEFAULT_GID 0
+#define MIN_UID     0
+#define MAX_UID     32767
+#define MIN_GID     0
+#define MAX_GID     32767
+#endif
+
 #define NPROC  64  // maximum number of processes -- normally in param.h
 
 #define min(a, b) ((a) < (b) ? (a) : (b))

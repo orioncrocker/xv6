@@ -1,3 +1,7 @@
+#ifdef CS333_P2
+#include "uproc.h"
+#endif
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -49,7 +53,15 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  uint start_ticks;            // CS333_P1
+  #ifdef CS333_P1
+  uint start_ticks;            // Time when process stated in milliseconds
+  #endif
+  #ifdef CS333_P2
+  uint uid;                    // Unique identifier
+  uint gid;                    // Group identifier
+  uint cpu_ticks_total;        // Total elapsed ticks in CPU
+  uint cpu_ticks_in;           // Ticks when scheduled
+  #endif
 };
 
 // Process memory is laid out contiguously, low addresses first:

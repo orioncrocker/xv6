@@ -96,6 +96,7 @@ allocproc(void)
     release(&ptable.lock);
     return 0;
   }
+
   p->state = EMBRYO;
   p->pid = nextpid++;
   release(&ptable.lock);
@@ -121,8 +122,15 @@ allocproc(void)
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  #ifdef CS333_P1
   // assign number of ticks to start_ticks
-  p->start_ticks = ticks;   // CS333_P1
+  p->start_ticks = ticks;
+  #endif
+  #ifdef CS333_P2
+  // initialize both cpu_ticks values to 0
+  p->cpu_ticks_total = 0;
+  p->cpu_ticks_in = 0;
+  #endif
 
   return p;
 }
@@ -153,6 +161,12 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
+
+  #ifdef CS333_P2
+  p->parent = 0;
+  p->uid = DEFAULT_UID;
+  p->gid = DEFAULT_GID;
+  #endif
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
@@ -192,39 +206,43 @@ fork(void)
 {
   int i;
   uint pid;
-  struct proc *np;
+  struct proc *newproc;
   struct proc *curproc = myproc();
 
   // Allocate process.
-  if((np = allocproc()) == 0){
+  if((newproc = allocproc()) == 0)
     return -1;
-  }
 
   // Copy process state from proc.
-  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
-    kfree(np->kstack);
-    np->kstack = 0;
-    np->state = UNUSED;
+  if((newproc->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+    kfree(newproc->kstack);
+    newproc->kstack = 0;
+    newproc->state = UNUSED;
     return -1;
   }
-  np->sz = curproc->sz;
-  np->parent = curproc;
-  *np->tf = *curproc->tf;
+
+  newproc->sz = curproc->sz;
+  newproc->parent = curproc;
+  *newproc->tf = *curproc->tf;
+
+  #ifdef CS333_P2
+  newproc->uid = curproc->uid;
+  newproc->gid = curproc->gid;
+  #endif
 
   // Clear %eax so that fork returns 0 in the child.
-  np->tf->eax = 0;
+  newproc->tf->eax = 0;
 
-  for(i = 0; i < NOFILE; i++)
+  for(i = 0; i < NOFILE; i++) {
     if(curproc->ofile[i])
-      np->ofile[i] = filedup(curproc->ofile[i]);
-  np->cwd = idup(curproc->cwd);
-
-  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
-
-  pid = np->pid;
+      newproc->ofile[i] = filedup(curproc->ofile[i]);
+  }
+  newproc->cwd = idup(curproc->cwd);
+  safestrcpy(newproc->name, curproc->name, sizeof(curproc->name));
+  pid = newproc->pid;
 
   acquire(&ptable.lock);
-  np->state = RUNNABLE;
+  newproc->state = RUNNABLE;
   release(&ptable.lock);
 
   return pid;
@@ -272,9 +290,9 @@ exit(void)
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
-#ifdef PDX_XV6
+  #ifdef PDX_XV6
   curproc->sz = 0;
-#endif // PDX_XV6
+  #endif // PDX_XV6
   sched();
   panic("zombie exit");
 }
@@ -338,17 +356,17 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-#ifdef PDX_XV6
+  #ifdef PDX_XV6
   int idle;  // for checking if processor is idle
-#endif // PDX_XV6
+  #endif // PDX_XV6
 
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
-#ifdef PDX_XV6
+    #ifdef PDX_XV6
     idle = 1;  // assume idle unless we schedule a process
-#endif // PDX_XV6
+    #endif // PDX_XV6
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -358,12 +376,15 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-#ifdef PDX_XV6
+      #ifdef PDX_XV6
       idle = 0;  // not idle this timeslice
-#endif // PDX_XV6
+      #endif // PDX_XV6
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      #ifdef CS333_P2
+      p->cpu_ticks_in = ticks;
+      #endif
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
@@ -372,13 +393,13 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
-#ifdef PDX_XV6
+    #ifdef PDX_XV6
     // if idle, wait for next interrupt
     if (idle) {
       sti();
       hlt();
     }
-#endif // PDX_XV6
+    #endif // PDX_XV6
   }
 }
 
@@ -537,12 +558,30 @@ procdumpP1(struct proc *p, char *state)
 
   cprintf("%d\t%s\t     %d.", p->pid, p->name, seconds);
   if (milli < 10)
-  	cprintf("00%d", milli);
+  	cprintf("00");
   else if (milli < 100)
-  	cprintf("0%d", milli);
-  else
-  	cprintf("%d", milli);
-  cprintf("\t%s\t%d\t", state, p->sz);
+  	cprintf("0");
+  cprintf("%d\t%s\t%d\t", milli, state, p->sz);
+}
+#endif
+
+#ifdef CS333_P2
+void
+procdumpP2(struct proc *p, char *state)
+{
+  cprintf("%d\t%s\t     %d\t%d\t%d\t", p->pid, p->name, p->uid, p->gid,
+          p->parent ? p->parent->pid : p->pid);
+
+  // Calculate proper amount of time passed
+  uint calcTicks = ticks - p->start_ticks;
+  uint seconds = calcTicks / 1000;
+  uint milli = calcTicks % 1000;
+  cprintf("%d.", seconds);
+  if (milli < 10)
+  	cprintf("00");
+  else if (milli < 100)
+  	cprintf("0");
+  cprintf("%d\t%s\t%d\t", milli, state, p->sz);
 }
 #endif
 
@@ -554,17 +593,17 @@ procdump(void)
   char *state;
   uint pc[10];
 
-#if defined(CS333_P4)
-#define HEADER "\nPID\tName         UID\tGID\tPPID\tPrio\tElapsed\tCPU\tState\tSize\t PCs\n"
-#elif defined(CS333_P3)
-#define HEADER "\nPID\tName         UID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"
-#elif defined(CS333_P2)
-#define HEADER "\nPID\tName         UID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"
-#elif defined(CS333_P1)
-#define HEADER "\nPID\tName         Elapsed\tState\tSize\t PCs\n"
-#else
-#define HEADER "\n"
-#endif
+  #if defined(CS333_P4)
+  #define HEADER "\nPID\tName         UID\tGID\tPPID\tPrio\tElapsed\tCPU\tState\tSize\t PCs\n"
+  #elif defined(CS333_P3)
+  #define HEADER "\nPID\tName         UID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"
+  #elif defined(CS333_P2)
+  #define HEADER "\nPID\tName         UID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"
+  #elif defined(CS333_P1)
+  #define HEADER "\nPID\tName         Elapsed\tState\tSize\t PCs\n"
+  #else
+  #define HEADER "\n"
+  #endif
 
   cprintf(HEADER);  // not conditionally compiled as must work in all project states
 
@@ -576,15 +615,15 @@ procdump(void)
     else
       state = "???";
 
-#if defined(CS333_P3)
+    #if defined(CS333_P3)
     procdumpP3(p, state);
-#elif defined(CS333_P2)
+    #elif defined(CS333_P2)
     procdumpP2(p, state);
-#elif defined(CS333_P1)
+    #elif defined(CS333_P1)
     procdumpP1(p, state);
-#else
+    #else
     cprintf("%d\t%s\t%s\t", p->pid, p->name, state);
-#endif
+    #endif
 
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
@@ -593,7 +632,41 @@ procdump(void)
     }
     cprintf("\n");
   }
-#ifdef CS333_P1
+  #ifdef CS333_P1
   cprintf("$ ");  // simulate shell prompt
-#endif // CS333_P1
+  #endif // CS333_P1
 }
+
+#ifdef CS333_P2
+int
+getprocs(uint max, struct uproc* table) {
+  int procs_count = 0;
+  struct proc* p;
+
+  // acquire spin lock
+  acquire(&ptable.lock);
+
+  // fill values for all table elements
+  for (p = ptable.proc; p < &ptable.proc[NPROC] && procs_count < max; p++) {
+
+    // only copy data of running or sleeping processes
+    if (p->state == EMBRYO || p->state == UNUSED)
+      continue;
+
+    table[procs_count].pid = p->pid;
+    table[procs_count].uid = p->uid;
+    table[procs_count].gid = p->gid;
+    table[procs_count].ppid = p->parent ? p->parent->pid : p->pid;
+    table[procs_count].elapsed_ticks = ticks-p->start_ticks;
+    table[procs_count].CPU_total_ticks = p->cpu_ticks_total;
+    table[procs_count].size = p->sz;
+    safestrcpy(table[procs_count].name, p->name, STRMAX);
+    safestrcpy(table[procs_count].state, states[p->state], STRMAX);
+    ++procs_count;
+  }
+
+  // release spin lock
+  release(&ptable.lock);
+  return procs_count;
+}
+#endif

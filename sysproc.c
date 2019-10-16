@@ -103,40 +103,98 @@ int
 sys_date(void)
 {
   struct rtcdate *d;
-
   if (argptr(0, (void*)&d, sizeof(struct rtcdate)) < 0)
     return -1;
 
   cmostime(d);
-
   return 0;
 }
 #endif
 
 #ifdef CS333_P2
-uint
-getuid(void)
+int
+sys_getuid(void)
 {
+  struct proc *p;
+  if (argptr(0, (void*)&p, sizeof(struct proc)) < 0)
+    return -1;
 
-}
-
-uint
-getgid(void)
-{
-}
-
-uint
-getppid(void)
-{
+  return p->uid;
 }
 
 int
-setuid(uint)
+sys_getgid(void)
 {
+  struct proc *p;
+  if (argptr(0, (void*)&p, sizeof(struct proc)) < 0)
+    return -1;
+
+  return p->gid;
 }
 
 int
-setgid(uint)
+sys_getppid(void)
 {
+  struct proc *p;
+  if (argptr(0, (void*)&p, sizeof(struct proc)) < 0)
+    return -1;
+
+  // check if current process has parent, and return own pid if does not
+  return p->parent ? p->parent->pid : p->pid;
+}
+
+int
+sys_setuid(void)
+{
+  uint uid;
+  struct proc *p;
+
+  if(argint(0,(int*)&uid) < 0)
+    return -1;
+  uid = (uint) uid;
+  // check that uid is within bounds
+  if (uid < MIN_UID || uid > MAX_UID)
+    return -1;
+
+  if (argptr(0, (void*)&p, sizeof(struct proc)) < 0)
+    return -1;
+
+  p->uid = uid;
+  return 0;
+}
+
+int
+sys_setgid(void)
+{
+  uint gid;
+  struct proc *p;
+
+  if(argint(0,(int*)&gid) < 0)
+    return -1;
+  gid = (uint) gid;
+  // check that gid is within bounds
+  if (gid < MIN_GID || gid > MAX_GID)
+    return -1;
+
+  if (argptr(0, (void*)&p, sizeof(struct proc)) < 0)
+    return -1;
+
+  p->gid = gid;
+  return 0;
+}
+
+int
+sys_getprocs(void)
+{
+  uint max;
+  struct uproc* table;
+
+  if (argint(0, (int*)&max) < 0)
+    return -1;
+
+  if (argptr(1, (void*)&table, sizeof(struct uproc)) < 0)
+    return -1;
+
+  return getprocs(max, table);
 }
 #endif
