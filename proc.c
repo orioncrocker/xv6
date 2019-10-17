@@ -85,6 +85,7 @@ allocproc(void)
   struct proc *p;
   char *sp;
 
+  // acquire spin lock
   acquire(&ptable.lock);
   int found = 0;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -93,6 +94,7 @@ allocproc(void)
       break;
     }
   if (!found) {
+    // release spin lock
     release(&ptable.lock);
     return 0;
   }
@@ -425,6 +427,9 @@ sched(void)
   if(readeflags()&FL_IF)
     panic("sched interruptible");
   intena = mycpu()->intena;
+  #ifdef CS333_P2
+  p->cpu_ticks_total += (ticks - p->cpu_ticks_in);
+  #endif
   swtch(&p->context, mycpu()->scheduler);
   mycpu()->intena = intena;
 }
@@ -569,10 +574,12 @@ procdumpP1(struct proc *p, char *state)
 void
 procdumpP2(struct proc *p, char *state)
 {
-  cprintf("%d\t%s\t     %d\t%d\t%d\t", p->pid, p->name, p->uid, p->gid,
-          p->parent ? p->parent->pid : p->pid);
+  // here for my reference
+  // \nPID\tName         UID\tGID\tPPID\tElapsed\tCPU\tState\tSize\t PCs\n"
+  uint ppid = p->parent ? p->parent->pid : p->pid;
+  cprintf("%d\t%s\t     %d  \t%d\t%d\t", p->pid, p->name, p->uid, p->gid, ppid);
 
-  // Calculate proper amount of time passed
+  // Calculate elapsed time
   uint calcTicks = ticks - p->start_ticks;
   uint seconds = calcTicks / 1000;
   uint milli = calcTicks % 1000;
@@ -639,34 +646,66 @@ procdump(void)
 
 #ifdef CS333_P2
 int
+setuid(uint new_uid)
+{
+  // check value of incoming argument
+  if (new_uid < MIN_UID || new_uid > MAX_UID)
+    return -1;
+
+  struct proc *p = myproc();
+
+  // acquire spin lock
+  acquire(&ptable.lock);
+  p->uid = new_uid;
+  release(&ptable.lock);
+  return 0;
+}
+
+int
+setgid(uint new_gid)
+{
+  // check value of incoming argument
+  if (new_gid < MIN_GID || new_gid > MAX_GID)
+    return -1;
+
+  struct proc *p = myproc();
+
+  // acquire spin lock
+  acquire(&ptable.lock);
+  p->gid = new_gid;
+  release(&ptable.lock);
+  return 0;
+}
+
+int
 getprocs(uint max, struct uproc* table) {
-  int procs_count = 0;
+  int proc_count = 0;
   struct proc* p;
 
   // acquire spin lock
   acquire(&ptable.lock);
 
   // fill values for all table elements
-  for (p = ptable.proc; p < &ptable.proc[NPROC] && procs_count < max; p++) {
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 
     // only copy data of running or sleeping processes
-    if (p->state == EMBRYO || p->state == UNUSED)
+    if (p->state == UNUSED)
       continue;
 
-    table[procs_count].pid = p->pid;
-    table[procs_count].uid = p->uid;
-    table[procs_count].gid = p->gid;
-    table[procs_count].ppid = p->parent ? p->parent->pid : p->pid;
-    table[procs_count].elapsed_ticks = ticks-p->start_ticks;
-    table[procs_count].CPU_total_ticks = p->cpu_ticks_total;
-    table[procs_count].size = p->sz;
-    safestrcpy(table[procs_count].name, p->name, STRMAX);
-    safestrcpy(table[procs_count].state, states[p->state], STRMAX);
-    ++procs_count;
+    table[proc_count].pid = p->pid;
+    table[proc_count].uid = p->uid;
+    table[proc_count].gid = p->gid;
+    table[proc_count].ppid = p->parent ? p->parent->pid : p->pid;
+    table[proc_count].elapsed_ticks = ticks-p->start_ticks;
+    table[proc_count].CPU_total_ticks = p->cpu_ticks_total;
+    table[proc_count].size = p->sz;
+    safestrcpy(table[proc_count].name, p->name, STRMAX);
+    safestrcpy(table[proc_count].state, states[p->state], STRMAX);
+    ++proc_count;
   }
 
   // release spin lock
   release(&ptable.lock);
-  return procs_count;
+  return proc_count;
 }
 #endif
