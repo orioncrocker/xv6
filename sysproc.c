@@ -112,7 +112,7 @@ sys_date(void)
 #endif
 
 #ifdef CS333_P2
-uint
+int
 sys_getuid(void)
 {
   return myproc()->uid;
@@ -152,12 +152,13 @@ int
 sys_getprocs(void)
 {
   uint max;
-  struct uproc* table;
 
   // get info from stack
   if (argint(0, (int*)&max) < 0)
     return -1;
-  if (argptr(1, (void*)&table, sizeof(struct uproc)) < 0)
+
+  struct uproc* table;
+  if (argptr(1, (void*)&table, sizeof(struct uproc) * max) < 0)
     return -1;
 
   return getprocs(max, table);
