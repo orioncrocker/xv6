@@ -13,6 +13,8 @@ main(void) {
   struct uproc *p = malloc(sizeof(struct uproc)*MAX);
   int procs = getprocs(MAX, p);
 
+  printf(1, "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\n");
+
   for (int i = 0; i < procs; i++) {
     // calculate elapsed time
     uint elapsed = p[i].elapsed_ticks;
@@ -34,8 +36,7 @@ main(void) {
     else if (cpu_ms < 100)
       cpu_zeros = "0";
 
-    printf(1, "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\n"
-           "%d\t%s\t%d\t%d\t%d\t%d.%s%d\t%d.%s%d\t%s\t%d\n",
+    printf(1, "%d\t%s\t%d\t%d\t%d\t%d.%s%d\t%d.%s%d\t%s\t%d\n",
            p[i].pid, p[i].name, p[i].uid, p[i].gid, p[i].ppid,
            elapsed_s, elapsed_zeros, elapsed_ms, cpu_s, cpu_zeros, cpu_ms,
            p[i].state, p[i].size);

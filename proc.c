@@ -699,7 +699,7 @@ getprocs(uint max, struct uproc* table) {
   for (p = ptable.proc; p < &ptable.proc[NPROC] && i < max; p++) {
 
     // only copy data of running or sleeping processes
-    if (p->state == UNUSED)
+    if (p->state == UNUSED || p->state == EMBRYO)
       continue;
 
     table[i].pid = p->pid;

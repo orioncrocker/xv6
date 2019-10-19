@@ -372,6 +372,8 @@ testtime(void){
 int
 main(int argc, char *argv[])
 {
+  // determine which tests should be run based on args
+  if (argc <= 1) {
   #ifdef CPUTIME_TEST
   testcputime(argv[0]);
   #endif
@@ -387,6 +389,23 @@ main(int argc, char *argv[])
   testtime();
   #endif
   printf(1, "\n** End of Tests **\n");
+  } else {
+    for (uint i = 1; i < argc; i++) {
+      if (strcmp(argv[i], "cputime") == 0)
+        testcputime(argv[0]);
+      else if (strcmp(argv[i], "testuidgid") == 0) {
+        testuidgid();
+        testuidgidinheritance();
+        testppid();
+      }
+      else if (strcmp(argv[i], "getprocs") == 0)
+        testgetprocs();
+      else if (strcmp(argv[i], "time") == 0)
+        testtime();
+      else
+        printf(1, "Command not recognized\n");
+    }
+  }
   exit();
 }
 #endif
