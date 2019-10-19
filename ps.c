@@ -4,14 +4,11 @@
 #include "user.h"
 #include "uproc.h"
 
-// not permanent
-#define MAX 16
-
 int
 main(void) {
 
-  struct uproc *p = malloc(sizeof(struct uproc)*MAX);
-  int procs = getprocs(MAX, p);
+  struct uproc *p = malloc(sizeof(struct uproc)*NPROC);
+  int procs = getprocs(NPROC, p);
 
   printf(1, "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\n");
 

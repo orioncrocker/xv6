@@ -1,6 +1,5 @@
 #ifdef CS333_P2
 #include "uproc.h"
-// header, probably won't work though
 int getprocs(uint, struct uproc*);
 int setuid(uint);
 int setgid(uint);

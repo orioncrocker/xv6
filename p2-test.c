@@ -121,6 +121,8 @@ testuidgid(void)
 
   if (success == 0)
     printf(1, "** All tests passed! **\n");
+  else
+    printf(1, "** Not all tests passed. **\n");
 }
 
 static void
@@ -223,6 +225,8 @@ testcputime(char * name){
 
   if(success == 0)
     printf(1, "** All Tests Passed! **\n");
+  else
+    printf(1, "** Not all tests passed. **\n");
 }
 #endif
 #endif
