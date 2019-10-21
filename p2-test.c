@@ -30,8 +30,10 @@ testppid(void){
     ppid = getppid();
     if(ppid != pid)
       printf(2, "FAILED: Parent PID is %d, Child's PPID is %d\n", pid, ppid);
-    else
+    else {
+      printf(1, "Parent PID is %d, Child's PPID is %d\n", pid, ppid);
       printf(1, "** Test passed! **\n");
+    }
     exit();
   }
   else
@@ -46,6 +48,8 @@ testgid(uint new_val, uint expected_get_val, int expected_set_ret){
 
   pre_gid = getgid();
   ret = setgid(new_val);
+  printf(1, "Setting GID to %d, expecting %d, returned GID is %d.\n", new_val,
+         expected_get_val, ret);
   if((ret < 0 && expected_set_ret >= 0) || (ret >= 0 && expected_set_ret < 0)){
     printf(2, "FAILED: setgid(%d) returned %d, expected %d\n", new_val, ret, expected_set_ret);
     success = -1;
@@ -67,6 +71,8 @@ testuid(uint new_val, uint expected_get_val, int expected_set_ret){
 
   pre_uid = getuid();
   ret = setuid(new_val);
+  printf(1, "Setting UID to %d, expecting %d, returned UID is %d.\n", new_val,
+         expected_get_val, ret);
   if((ret < 0 && expected_set_ret >= 0) || (ret >= 0 && expected_set_ret < 0)){
     printf(2, "FAILED: setuid(%d) returned %d, expected %d\n", new_val, ret, expected_set_ret);
     success = -1;
