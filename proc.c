@@ -656,38 +656,6 @@ procdump(void)
 
 #ifdef CS333_P2
 int
-setuid(uint new_uid)
-{
-  // check value of incoming argument
-  if (new_uid < MIN_UID || new_uid > MAX_UID)
-    return -1;
-
-  struct proc *p = myproc();
-
-  // acquire spin lock
-  acquire(&ptable.lock);
-  p->uid = new_uid;
-  release(&ptable.lock);
-  return 0;
-}
-
-int
-setgid(uint new_gid)
-{
-  // check value of incoming argument
-  if (new_gid < MIN_GID || new_gid > MAX_GID)
-    return -1;
-
-  struct proc *p = myproc();
-
-  // acquire spin lock
-  acquire(&ptable.lock);
-  p->gid = new_gid;
-  release(&ptable.lock);
-  return 0;
-}
-
-int
 getprocs(uint max, struct uproc* table) {
   uint i = 0;
   struct proc *p;

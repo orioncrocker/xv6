@@ -136,7 +136,14 @@ sys_setuid(void)
   uint new_uid;
   if (argint(0, (int*)&new_uid) < 0)
     return -1;
-  return setuid(new_uid);
+
+  // check value of incoming argument
+  if (new_uid < MIN_UID || new_uid > MAX_UID)
+    return -1;
+
+  struct proc *p = myproc();
+  p->uid = new_uid;
+  return 0;
 }
 
 int
@@ -145,7 +152,14 @@ sys_setgid(void)
   uint new_gid;
   if (argint(0, (int*)&new_gid) < 0)
     return -1;
-  return setgid(new_gid);
+
+  // check value of incoming argument
+  if (new_gid < MIN_GID || new_gid > MAX_GID)
+    return -1;
+
+  struct proc *p = myproc();
+  p->gid = new_gid;
+  return 0;
 }
 
 int

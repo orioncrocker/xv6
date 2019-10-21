@@ -48,13 +48,12 @@ testgid(uint new_val, uint expected_get_val, int expected_set_ret){
 
   pre_gid = getgid();
   ret = setgid(new_val);
-  printf(1, "Setting GID to %d, expecting %d, returned GID is %d.\n", new_val,
-         expected_get_val, ret);
   if((ret < 0 && expected_set_ret >= 0) || (ret >= 0 && expected_set_ret < 0)){
     printf(2, "FAILED: setgid(%d) returned %d, expected %d\n", new_val, ret, expected_set_ret);
     success = -1;
   }
   post_gid = getgid();
+  printf(1, "Setting GID to %d, returned GID is %d.\n", new_val, post_gid);
   if(post_gid != expected_get_val){
     printf(2, "FAILED: UID was %d. After setgid(%d), getgid() returned %d, expected %d\n",
           pre_gid, new_val, post_gid, expected_get_val);
@@ -71,13 +70,12 @@ testuid(uint new_val, uint expected_get_val, int expected_set_ret){
 
   pre_uid = getuid();
   ret = setuid(new_val);
-  printf(1, "Setting UID to %d, expecting %d, returned UID is %d.\n", new_val,
-         expected_get_val, ret);
   if((ret < 0 && expected_set_ret >= 0) || (ret >= 0 && expected_set_ret < 0)){
     printf(2, "FAILED: setuid(%d) returned %d, expected %d\n", new_val, ret, expected_set_ret);
     success = -1;
   }
   post_uid = getuid();
+  printf(1, "Setting UID to %d, returned UID is %d.\n", new_val, post_uid);
   if(post_uid != expected_get_val){
     printf(2, "FAILED: UID was %d. After setuid(%d), getuid() returned %d, expected %d\n",
           pre_uid, new_val, post_uid, expected_get_val);
