@@ -602,6 +602,13 @@ procdumpP2(struct proc *p, char *state)
 }
 #endif
 
+#ifdef CS333_P3
+void
+procdumpP3(struct proc *p, char *state) {
+  procdumpP2(p, state); // this needs to be changed lol
+}
+#endif
+
 void
 procdump(void)
 {
