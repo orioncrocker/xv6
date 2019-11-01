@@ -1,8 +1,6 @@
 #ifdef CS333_P2
 #include "uproc.h"
 int getprocs(uint, struct uproc*);
-int setuid(uint);
-int setgid(uint);
 #endif
 
 // Per-CPU state
@@ -65,7 +63,17 @@ struct proc {
   uint cpu_ticks_total;        // Total elapsed ticks in CPU
   uint cpu_ticks_in;           // Ticks when scheduled
   #endif
+  #ifdef CS333_P3
+  struct proc *next;           // Next pointer for list format
+  #endif
 };
+
+#ifdef CS333_P3
+struct ptrs {
+  struct proc* head;
+  struct proc* tail;
+};
+#endif
 
 // Process memory is laid out contiguously, low addresses first:
 //   text
