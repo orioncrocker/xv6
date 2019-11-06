@@ -7,13 +7,21 @@
 #include "proc.h"
 #include "spinlock.h"
 
-// list management function prototypes
 #ifdef CS333_P3
+// provided helper functions
 static void initProcessLists(void);
 static void initFreeList(void);
 static void stateListAdd(struct ptrs*, struct proc*);
 static int  stateListRemove(struct ptrs*, struct proc* p);
 static void assertState(struct proc*, enum procstate, const char *, int);
+
+// list output functions
+/*
+static void readyList(void);
+static void freeList(void);
+static void sleepList(void);
+static void zombieList(void);
+*/
 #endif
 
 static char *states[] = {
@@ -91,6 +99,7 @@ myproc(void) {
 // If found, change state to EMBRYO and initialize
 // state required to run in the kernel.
 // Otherwise return 0.
+#ifdef CS333_P3
 static struct proc*
 allocproc(void)
 {
@@ -100,21 +109,12 @@ allocproc(void)
   // acquire spin lock
   acquire(&ptable.lock);
 
-  int found = 0;
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == UNUSED) {
-      found = 1;
-      break;
-    }
-  if (!found) {
-    // release spin lock
+  // get head of unused list
+  p = ptable.list[UNUSED].head;
+  if(p == NULL){
     release(&ptable.lock);
     return 0;
   }
-
-  #ifdef CS333_P3
-  // get head of unused list
-  p = ptable.list[UNUSED].head;
 
   // assert that proc's state is actually UNUSED
   assertState(p, UNUSED, "allocproc", 120);
@@ -128,17 +128,10 @@ allocproc(void)
 
   // add to embryo list
   stateListAdd(&ptable.list[EMBRYO], p);
-
-  #else
-  p->state = EMBRYO;
-  p->pid = nextpid++;
-  #endif
-
   release(&ptable.lock);
 
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
-    #ifdef CS333_P3
     acquire(&ptable.lock);
     if(stateListRemove(&ptable.list[EMBRYO], p) < 0)
       panic("Process is not in EMBRYO list. allocproc");
@@ -146,11 +139,6 @@ allocproc(void)
     p->state = UNUSED;
     stateListAdd(&ptable.list[UNUSED], p);
     release(&ptable.lock);
-
-    #else
-    p->state = UNUSED;
-
-    #endif
     return 0;
   }
   sp = p->kstack + KSTACKSIZE;
@@ -181,21 +169,80 @@ allocproc(void)
 
   return p;
 }
+#else
+static struct proc*
+allocproc(void)
+{
+  struct proc *p;
+  char *sp;
+
+  // acquire spin lock
+  acquire(&ptable.lock);
+
+  int found = 0;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    if(p->state == UNUSED) {
+      found = 1;
+      break;
+    }
+  if (!found) {
+    // release spin lock
+    release(&ptable.lock);
+    return 0;
+  }
+
+  p->state = EMBRYO;
+  p->pid = nextpid++;
+  release(&ptable.lock);
+
+  // Allocate kernel stack.
+  if((p->kstack = kalloc()) == 0){
+    p->state = UNUSED;
+    return 0;
+  }
+  sp = p->kstack + KSTACKSIZE;
+
+  // Leave room for trap frame.
+  sp -= sizeof *p->tf;
+  p->tf = (struct trapframe*)sp;
+
+  // Set up new context to start executing at forkret,
+  // which returns to trapret.
+  sp -= 4;
+  *(uint*)sp = (uint)trapret;
+
+  sp -= sizeof *p->context;
+  p->context = (struct context*)sp;
+  memset(p->context, 0, sizeof *p->context);
+  p->context->eip = (uint)forkret;
+
+  #ifdef CS333_P1
+  // assign number of ticks to start_ticks
+  p->start_ticks = ticks;
+  #endif
+  #ifdef CS333_P2
+  // initialize both cpu_ticks values to 0
+  p->cpu_ticks_total = 0;
+  p->cpu_ticks_in = 0;
+  #endif
+
+  return p;
+}
+#endif
 
 //PAGEBREAK: 32
 // Set up first user process.
+#ifdef CS333_P3
 void
 userinit(void)
 {
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
-  #ifdef CS333_P3
   acquire(&ptable.lock);
   initProcessLists();
   initFreeList();
   release(&ptable.lock);
-  #endif
 
   p = allocproc();
 
@@ -228,7 +275,6 @@ userinit(void)
   // because the assignment might not be atomic.
   acquire(&ptable.lock);
 
-  #ifdef CS333_P3
   // remove proc from EMBRYO list
   if(stateListRemove(&ptable.list[EMBRYO], p) < 0)
     panic("Process is not in EMBRYO list. userinit");
@@ -240,12 +286,49 @@ userinit(void)
   // add first process to RUNNABLE list
   stateListAdd(&ptable.list[RUNNABLE], p);
 
-  #else
-  p->state = RUNNABLE;
-  #endif
-
   release(&ptable.lock);
 }
+#else
+void
+userinit(void)
+{
+  struct proc *p;
+  extern char _binary_initcode_start[], _binary_initcode_size[];
+
+  p = allocproc();
+
+  initproc = p;
+  if((p->pgdir = setupkvm()) == 0)
+    panic("userinit: out of memory?");
+  inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
+  p->sz = PGSIZE;
+  memset(p->tf, 0, sizeof(*p->tf));
+  p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
+  p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
+  p->tf->es = p->tf->ds;
+  p->tf->ss = p->tf->ds;
+  p->tf->eflags = FL_IF;
+  p->tf->esp = PGSIZE;
+  p->tf->eip = 0;  // beginning of initcode.S
+
+  safestrcpy(p->name, "initcode", sizeof(p->name));
+  p->cwd = namei("/");
+
+  #ifdef CS333_P2
+  p->parent = 0;
+  p->uid = DEFAULT_UID;
+  p->gid = DEFAULT_GID;
+  #endif
+
+  // this assignment to p->state lets other cores
+  // run this process. the acquire forces the above
+  // writes to be visible, and the lock is also needed
+  // because the assignment might not be atomic.
+  acquire(&ptable.lock);
+  p->state = RUNNABLE;
+  release(&ptable.lock);
+}
+#endif
 
 // Grow current process's memory by n bytes.
 // Return 0 on success, -1 on failure.
@@ -271,6 +354,7 @@ growproc(int n)
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
+#ifdef CS333_P3
 int
 fork(void)
 {
@@ -288,7 +372,6 @@ fork(void)
     kfree(newproc->kstack);
     newproc->kstack = 0;
 
-    #ifdef CS333_P3
     acquire(&ptable.lock);
 
     if(stateListRemove(&ptable.list[EMBRYO], newproc) < 0)
@@ -298,10 +381,6 @@ fork(void)
     stateListAdd(&ptable.list[UNUSED], newproc);
 
     release(&ptable.lock);
-
-    #else
-    newproc->state = UNUSED;
-    #endif
     return -1;
   }
 
@@ -327,21 +406,64 @@ fork(void)
 
   acquire(&ptable.lock);
 
-  #ifdef CS333_P3
   if(stateListRemove(&ptable.list[EMBRYO], newproc) < 0)
     panic("Process is not in EMBRYO list. fork");
   assertState(newproc, EMBRYO, "fork", 333);
   newproc->state = RUNNABLE;
   stateListAdd(&ptable.list[RUNNABLE], newproc);
 
-  #else
-  newproc->state = RUNNABLE;
-  #endif
-
   release(&ptable.lock);
 
   return pid;
 }
+#else
+int
+fork(void)
+{
+  int i;
+  uint pid;
+  struct proc *newproc;
+  struct proc *curproc = myproc();
+
+  // Allocate process.
+  if((newproc = allocproc()) == 0)
+    return -1;
+
+  // Copy process state from proc.
+  if((newproc->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+    kfree(newproc->kstack);
+    newproc->kstack = 0;
+    newproc->state = UNUSED;
+    return -1;
+  }
+
+  newproc->sz = curproc->sz;
+  newproc->parent = curproc;
+  *newproc->tf = *curproc->tf;
+
+  #ifdef CS333_P2
+  newproc->uid = curproc->uid;
+  newproc->gid = curproc->gid;
+  #endif
+
+  // Clear %eax so that fork returns 0 in the child.
+  newproc->tf->eax = 0;
+
+  for(i = 0; i < NOFILE; i++) {
+    if(curproc->ofile[i])
+      newproc->ofile[i] = filedup(curproc->ofile[i]);
+  }
+  newproc->cwd = idup(curproc->cwd);
+  safestrcpy(newproc->name, curproc->name, sizeof(curproc->name));
+  pid = newproc->pid;
+
+  acquire(&ptable.lock);
+  newproc->state = RUNNABLE;
+  release(&ptable.lock);
+
+  return pid;
+}
+#endif
 
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
@@ -1186,5 +1308,74 @@ assertState(struct proc *p, enum procstate state, const char * func, int line)
     cprintf("Error: proc state is %s and should be %s.\nCalled from %s line %d\n",
         states[p->state], states[state], func, line);
     panic("Error: Process state incorrect in assertState()");
+}
+#endif
+
+// functions that output current state of lists
+#ifdef CS333_P3
+void
+readyList(void)
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+
+  cprintf("Ready List Processes:\n");
+  for(p = ptable.list[RUNNABLE].head; p != NULL; p = p->next){
+    cprintf("%d", p->pid);
+    if(p->next)
+      cprintf(" -> ");
+  }
+
+  cprintf("\n$ ");
+  release(&ptable.lock);
+}
+
+void
+freeList(void)
+{
+  struct proc *p;
+  int procs = 0;
+  acquire(&ptable.lock);
+
+  for(p = ptable.list[UNUSED].head; p != NULL; p = p->next)
+    procs++;
+
+  cprintf("Free List Size: %d processes\n$ ", procs);
+
+  release(&ptable.lock);
+}
+
+void
+sleepList(void)
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+
+  cprintf("Sleep List Processes:\n");
+  for(p = ptable.list[SLEEPING].head; p != NULL; p = p->next){
+    cprintf("%d", p->pid);
+    if(p->next)
+      cprintf(" -> ");
+  }
+
+  cprintf("\n$ ");
+  release(&ptable.lock);
+}
+
+void
+zombieList(void)
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+
+  cprintf("Zombie List Processes:\n");
+  for(p = ptable.list[ZOMBIE].head; p != NULL; p = p->next){
+    cprintf("%d,%d", p->pid, p->parent ? p->parent->pid : p->pid);
+    if(p->next)
+      cprintf(" -> ");
+  }
+
+  cprintf("\n$ ");
+  release(&ptable.lock);
 }
 #endif

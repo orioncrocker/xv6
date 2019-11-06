@@ -1,4 +1,11 @@
-#ifdef CS333_P2
+#ifdef CS333_P3
+#include "uproc.h"
+void readyList(void);
+void freeList(void);
+void sleepList(void);
+void zombieList(void);
+int getprocs(uint, struct uproc*);
+#elif defined (CS333_P2)
 #include "uproc.h"
 int getprocs(uint, struct uproc*);
 #endif

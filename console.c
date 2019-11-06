@@ -206,9 +206,27 @@ consoleintr(int (*getc)(void))
   int shutdown = FALSE;
 #endif // PDX_XV6
 
+#ifdef CS333_P3
+  int list = 0;
+#endif
+
   acquire(&cons.lock);
   while((c = getc()) >= 0){
     switch(c){
+#ifdef CS333_P3
+    case C('R'):  // Ready list
+      list = 1;
+      break;
+    case C('F'):  // Free list
+      list = 2;
+      break;
+    case C('S'):  // Sleep list
+      list = 3;
+      break;
+    case C('Z'):  // Zombie list
+      list = 4;
+      break;
+#endif
     case C('P'):  // Process listing.
       // procdump() locks cons.lock indirectly; invoke later
       doprocdump = 1;
@@ -252,6 +270,24 @@ consoleintr(int (*getc)(void))
   if(doprocdump) {
     procdump();  // now call procdump() wo. cons.lock held
   }
+#ifdef CS333_P3
+  if(list > 0){
+    switch(list){
+      case 1:
+        readyList();
+        break;
+      case 2:
+        freeList();
+        break;
+      case 3:
+        sleepList();
+        break;
+      case 4:
+        zombieList();
+        break;
+    }
+  }
+#endif
 }
 
 int
