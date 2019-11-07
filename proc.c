@@ -14,14 +14,6 @@ static void initFreeList(void);
 static void stateListAdd(struct ptrs*, struct proc*);
 static int  stateListRemove(struct ptrs*, struct proc* p);
 static void assertState(struct proc*, enum procstate, const char *, int);
-
-// list output functions
-/*
-static void readyList(void);
-static void freeList(void);
-static void sleepList(void);
-static void zombieList(void);
-*/
 #endif
 
 static char *states[] = {
@@ -116,26 +108,24 @@ allocproc(void)
     return 0;
   }
 
-  // assert that proc's state is actually UNUSED
-  assertState(p, UNUSED, "allocproc", 120);
-
-  // now that proc p is held, remove p from unused list
+  // remove from UNUSED list
   if(stateListRemove(&ptable.list[UNUSED], p) < 0)
     panic("Process is not in UNUSED list. allocproc");
-
+  assertState(p, UNUSED, "allocproc", 116);
   p->state = EMBRYO;
   p->pid = nextpid++;
 
-  // add to embryo list
+  // add to EMBRYO list
   stateListAdd(&ptable.list[EMBRYO], p);
   release(&ptable.lock);
 
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
+    // if could not allocate kernel stack, return to UNUSED list
     acquire(&ptable.lock);
     if(stateListRemove(&ptable.list[EMBRYO], p) < 0)
       panic("Process is not in EMBRYO list. allocproc");
-    assertState(p, EMBRYO, "allocproc", 145);
+    assertState(p, EMBRYO, "allocproc", 130);
     p->state = UNUSED;
     stateListAdd(&ptable.list[UNUSED], p);
     release(&ptable.lock);
@@ -512,16 +502,16 @@ exit(void)
 
   if(stateListRemove(&ptable.list[RUNNING], curproc) < 0)
     panic("Process is not in RUNNING list. exit");
-  assertState(curproc, RUNNING, "exit", 393);
+  assertState(curproc, RUNNING, "exit", 505);
+
+  // Jump into the scheduler, never to return.
+  curproc->state = ZOMBIE;
+  stateListAdd(&ptable.list[ZOMBIE], curproc);
 
   #ifdef PDX_XV6
   curproc->sz = 0;
   #endif // PDX_XV6
 
-  curproc->state = ZOMBIE;
-  stateListAdd(&ptable.list[ZOMBIE], curproc);
-
-  // Jump into the scheduler, never to return.
   sched();
   panic("zombie exit");
 }
@@ -575,7 +565,7 @@ exit(void)
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
-#ifdef CS333
+#ifdef CS333_P3
 int
 wait(void)
 {
@@ -588,8 +578,9 @@ wait(void)
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
-    for(int i = UNUSED; i <= ZOMBIE; i++){
+    for(int i = EMBRYO; i <= ZOMBIE; i++){
       p = ptable.list[i].head;
+
       while(p != NULL){
         if (p->parent != curproc){
           p = p->next;
@@ -609,8 +600,8 @@ wait(void)
           p->killed = 0;
 
           if(stateListRemove(&ptable.list[ZOMBIE], p) < 0)
-            printf("Process is not in ZOMBIE list. wait");
-          assertState(p, ZOMBIE, "wait", 490);
+            panic("Process is not in ZOMBIE list. wait");
+          assertState(p, ZOMBIE, "wait", 604);
 
           p->state = UNUSED;
           stateListAdd(&ptable.list[UNUSED], p);
@@ -1309,10 +1300,8 @@ assertState(struct proc *p, enum procstate state, const char * func, int line)
         states[p->state], states[state], func, line);
     panic("Error: Process state incorrect in assertState()");
 }
-#endif
 
 // functions that output current state of lists
-#ifdef CS333_P3
 void
 readyList(void)
 {
@@ -1370,7 +1359,7 @@ zombieList(void)
 
   cprintf("Zombie List Processes:\n");
   for(p = ptable.list[ZOMBIE].head; p != NULL; p = p->next){
-    cprintf("%d,%d", p->pid, p->parent ? p->parent->pid : p->pid);
+    cprintf("(%d,%d)", p->pid, p->parent ? p->parent->pid : p->pid);
     if(p->next)
       cprintf(" -> ");
   }
