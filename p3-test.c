@@ -6,14 +6,14 @@
 #include "types.h"
 #include "user.h"
 
-void
+static void
 zombieTest(int n){
 
   int i, ret;
   int extra = 0;
   char *next = 0;
 
-  printf(1, "\nZOMBIE TEST\n");
+  printf(1, "\n----------\nZOMBIE TEST\n----------\n");
 
   for(i = 0; i < n; i++){
     ret = fork();
@@ -28,8 +28,8 @@ zombieTest(int n){
     n = n-extra;
   }
 
-  printf(1, "%d zombies should exist. "
-         "Verify with ctl+z and enter any key to continue.\n", n);
+  printf(1, "Test created %d zombie processes. "
+         "Verify with Ctrl+Z and press enter to continue.\n", n);
   gets(next, 10);
 
   int reaped = 0;
@@ -37,15 +37,15 @@ zombieTest(int n){
     wait();
     reaped++;
   }
-  printf(1, "%d procs reaped.\n", reaped);
+  printf(1,"%d processes reaped.\n** Test complete! **\n");
 }
 
-void
+static void
 sleepTest(void){
 
   char *next = 0;
 
-  printf(1, "\nSLEEP TEST\n");
+  printf(1, "\n----------\nSlEEP TEST\n----------\n");
 
   int ret = fork();
 
@@ -57,24 +57,25 @@ sleepTest(void){
       wait();
       exit();
     }
-    printf(1, "Created %d sleeping procs. "
-           "Verify with ctl+s and enter any key to continue.\n", count);
+    printf(1, "Test created %d sleeping procs. "
+           "Verify with Ctrl+S and press enter to continue.\n", count);
     gets(next, 10);
     exit();
   }
   wait();
+  printf(1,"\n** Test complete! **\n");
 }
 
-void
+static void
 runTest(int n){
 
   int i, ret;
   int extra = 0;
   char *next = 0;
 
-  printf(1, "\nRUN QUEUE TEST\n");
+  printf(1, "\n----------\nROUND ROBIN TEST\n----------\n");
 
-  printf(1, "Press any key to begin test. Use ctl+r over the next few seconds.\n");
+  printf(1, "Press enter to begin test. Use Ctrl+R over the next few seconds.\n");
   gets(next, 10);
 
   for(i = 0; i < n; i++){
@@ -93,16 +94,16 @@ runTest(int n){
   for(i = 0; i < n; i++)
     wait();
 
-  printf(1,"\n");
+  printf(1,"\n** Test complete! **\n");
 }
 
-void
+static void
 killTest(void){
 
   int ret;
   char *next = 0;
 
-  printf(1, "\nKILL TEST\n");
+  printf(1, "\n----------\nKILL TEST\n----------\n");
 
   ret = fork();
 
@@ -110,28 +111,30 @@ killTest(void){
   if(ret == 0){
     int pid = getpid();
     printf(1, "Proc %d has been created and put to sleep. "
-           "Verify %d is sleeping with ctl+s, then enter any key to kill it.\n", pid, pid);
+           "Verify %d is sleeping with Ctrl+S, then press enter to kill it.\n", pid, pid);
 
     sleep(1000000000);
     printf(1, "You waited too long! %d woke up and killed itself.\n", pid);
-
+    exit();
+  }
   // parent process
-  } else {
+  else {
 
     gets(next, 10);
     kill(ret);
 
     printf(1, "Proc %d should now be a zombie. "
-          "Verify with ctl+z and any key to continue.\n", ret);
+          "Verify with Ctrl+Z and press enter to continue.\n", ret);
     gets(next, 10);
     wait();
+    printf(1,"\n** Test complete! **\n");
   }
 }
 
 int
 main(int argc, char *argv[]){
 
-  // default number of procs to test
+  // default number of procs to create in tests
   int n = 10;
 
   if(argc <= 1){
@@ -139,9 +142,10 @@ main(int argc, char *argv[]){
     runTest(n);
     sleepTest();
     killTest();
+    printf(1, "\n\n** ALL TESTS COMPLETE **\n\n");
   } else {
 
-    for (uint i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; i++) {
       if (strcmp(argv[i], "zombie") == 0 || strcmp(argv[i], "z") == 0)
         zombieTest(n);
       else if (strcmp(argv[i], "run") == 0 || strcmp(argv[i], "r") == 0)
@@ -151,10 +155,9 @@ main(int argc, char *argv[]){
       else if (strcmp(argv[i], "kill") == 0 || strcmp(argv[i], "k") == 0)
         killTest();
       else
-        printf(1, "Command not recognized, check p3-test.c for examples\n");
+        printf(1, "Command not recognized, check p3-test.c's main() for examples\n");
     }
   }
-  printf(1, "TESTS COMPLETE\n");
   exit();
 }
 #endif
