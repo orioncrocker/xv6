@@ -1,3 +1,7 @@
+/* writen by orion crocker
+/  for CS333_P3
+*/
+
 #ifdef CS333_P3
 #include "types.h"
 #include "user.h"
@@ -8,6 +12,8 @@ zombieTest(int n){
   int i, ret;
   int extra = 0;
   char *next = 0;
+
+  printf(1, "\nZOMBIE TEST\n");
 
   for(i = 0; i < n; i++){
     ret = fork();
@@ -23,7 +29,7 @@ zombieTest(int n){
   }
 
   printf(1, "%d zombies should exist. "
-         "Check lists or press any key to reap child procs.\n", n);
+         "Verify with ctl+z and enter any key to continue.\n", n);
   gets(next, 10);
 
   int reaped = 0;
@@ -38,6 +44,9 @@ void
 sleepTest(void){
 
   char *next = 0;
+
+  printf(1, "\nSLEEP TEST\n");
+
   int ret = fork();
 
   if(ret == 0){
@@ -48,8 +57,8 @@ sleepTest(void){
       wait();
       exit();
     }
-    printf(1, "%d sleeping procs should exist. "
-           "Check lists or press any key to reap child procs.\n", count);
+    printf(1, "Created %d sleeping procs. "
+           "Verify with ctl+s and enter any key to continue.\n", count);
     gets(next, 10);
     exit();
   }
@@ -63,7 +72,9 @@ runTest(int n){
   int extra = 0;
   char *next = 0;
 
-  printf(1, "Press any key to begin run test. Use ctl-r over the next few seconds.\n");
+  printf(1, "\nRUN QUEUE TEST\n");
+
+  printf(1, "Press any key to begin test. Use ctl+r over the next few seconds.\n");
   gets(next, 10);
 
   for(i = 0; i < n; i++){
@@ -76,26 +87,45 @@ runTest(int n){
     }
   }
 
-
-/*
-  int ret = fork();
-  if (ret == 0){
-    while((ret = fork()) == 0);
-    for(int i = 0; i < 10000000; i++);
-
-    if(ret > 0){
-      wait();
-      exit();
-    }
-*/
   if(extra)
     n = n-extra;
 
   for(i = 0; i < n; i++)
     wait();
 
-  printf(1, "Test complete. Press any key to continue.\n");
-  gets(next, 10);
+  printf(1,"\n");
+}
+
+void
+killTest(void){
+
+  int ret;
+  char *next = 0;
+
+  printf(1, "\nKILL TEST\n");
+
+  ret = fork();
+
+  // child process
+  if(ret == 0){
+    int pid = getpid();
+    printf(1, "Proc %d has been created and put to sleep. "
+           "Verify %d is sleeping with ctl+s, then enter any key to kill it.\n", pid, pid);
+
+    sleep(1000000000);
+    printf(1, "You waited too long! %d woke up and killed itself.\n", pid);
+
+  // parent process
+  } else {
+
+    gets(next, 10);
+    kill(ret);
+
+    printf(1, "Proc %d should now be a zombie. "
+          "Verify with ctl+z and any key to continue.\n", ret);
+    gets(next, 10);
+    wait();
+  }
 }
 
 int
@@ -108,7 +138,7 @@ main(int argc, char *argv[]){
     zombieTest(n);
     runTest(n);
     sleepTest();
-
+    killTest();
   } else {
 
     for (uint i = 1; i < argc; i++) {
@@ -118,10 +148,13 @@ main(int argc, char *argv[]){
         runTest(n);
       else if (strcmp(argv[i], "sleep") == 0 || strcmp(argv[i], "s") == 0)
         sleepTest();
+      else if (strcmp(argv[i], "kill") == 0 || strcmp(argv[i], "k") == 0)
+        killTest();
       else
         printf(1, "Command not recognized, check p3-test.c for examples\n");
     }
   }
+  printf(1, "TESTS COMPLETE\n");
   exit();
 }
 #endif
