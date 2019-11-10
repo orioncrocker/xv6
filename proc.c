@@ -488,7 +488,7 @@ exit(void)
   wakeup1(curproc->parent);
 
   // Comb through all lists and pass abandoned children to initproc
-  for(int i = UNUSED; i <= ZOMBIE; i++){
+  for(int i = SLEEPING; i <= ZOMBIE; i++){
     p = ptable.list[i].head;
     while(p != NULL){
       if(p->parent == curproc){
