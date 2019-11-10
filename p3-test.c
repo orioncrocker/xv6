@@ -1,6 +1,13 @@
-/* writen by orion crocker
-/  for CS333_P3
-*/
+/********************************************************************************
+* Author: Orion Crocker
+* Filename: p3-test.c
+* Date: 11/09/19
+*
+* Class: Test Suite for CS333_P3
+* Description: Tests implmentation of process lists for PSU CS333
+* Project 3. Assumes that user has already implemented Ctrl+ shortcuts
+* to view lists.
+********************************************************************************/
 
 #ifdef CS333_P3
 #include "types.h"
