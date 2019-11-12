@@ -28,6 +28,10 @@
 #define MAX_GID     32767
 #endif
 
+#ifdef CS333_P3
+#define statecount NELEM(states)
+#endif
+
 #define NPROC  64  // maximum number of processes -- normally in param.h
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
