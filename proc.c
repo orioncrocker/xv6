@@ -8,6 +8,11 @@
 #include "spinlock.h"
 
 #ifdef CS333_P3
+struct ptrs {
+  struct proc* head;
+  struct proc* tail;
+};
+
 // provided helper functions
 static void initProcessLists(void);
 static void initFreeList(void);
@@ -488,7 +493,7 @@ exit(void)
   wakeup1(curproc->parent);
 
   // Comb through all lists and pass abandoned children to initproc
-  for(int i = SLEEPING; i <= ZOMBIE; i++){
+  for(int i = EMBRYO; i <= ZOMBIE; i++){
     p = ptable.list[i].head;
     while(p != NULL){
       if(p->parent == curproc){
@@ -960,9 +965,12 @@ static void
 wakeup1(void *chan)
 {
   struct proc *p = ptable.list[SLEEPING].head;
+  struct proc *temp;
 
   while(p != NULL){
     if(p->state == SLEEPING && p->chan == chan){
+
+      temp = p->next;
 
       if(stateListRemove(&ptable.list[SLEEPING], p) < 0)
         panic("Process is not in SLEEPING list. wakeup1");
@@ -970,8 +978,11 @@ wakeup1(void *chan)
 
       p->state = RUNNABLE;
       stateListAdd(&ptable.list[RUNNABLE], p);
+
+      p = temp;
     }
-    p = p->next;
+    else
+      p = p->next;
   }
 }
 #else
