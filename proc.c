@@ -1075,24 +1075,40 @@ kill(int pid)
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
 
-#ifdef CS333_P1
+#ifdef CS333_P4
 void
-procdumpP1(struct proc *p, char *state)
+procdumpP4(struct proc *p, char *state)
 {
-  uint calcTicks = ticks - p->start_ticks;
-  uint seconds = calcTicks / 1000;
-  uint milli = calcTicks % 1000;
+  //define HEADER "\nPID\tName         UID\tGID\tPPID\tPrio\tElapsed\tCPU\tState\tSize\t PCs\n"
 
-  cprintf("%d\t%s\t     %d.", p->pid, p->name, seconds);
-  if (milli < 10)
-  	cprintf("00");
-  else if (milli < 100)
-  	cprintf("0");
-  cprintf("%d\t%s\t%d\t", milli, state, p->sz);
+  uint ppid = p->parent ? p->parent->pid : p->pid;
+
+  // calculate elapsed time
+  uint total = ticks - p->start_ticks;
+  uint total_s = total / 1000;
+  uint total_ms = total % 1000;
+  char *total_zeros = "";
+  if (total_ms < 10)
+    total_zeros = "00";
+  else if (total_ms < 100)
+    total_zeros = "0";
+
+  // calculate cpu time
+  uint cpu_time = p->cpu_ticks_total;
+  uint cpu_s = cpu_time / 1000;
+  uint cpu_ms = cpu_time % 1000;
+  char* cpu_zeros = "";
+  if (cpu_ms < 10)
+    cpu_zeros = "00";
+  else if (cpu_ms < 100)
+    cpu_zeros = "0";
+
+  cprintf("%d\t%s\t     %d  \t%d\t%d\t%d\t%d.%s%d\t%d.%s%d\t%s\t%d\t",
+          p->pid, p->name, p->uid, p->gid, ppid, p->priority, total_s,
+          total_zeros, total_ms, cpu_s, cpu_zeros, cpu_ms, state, p->sz);
+
 }
-#endif
-
-#ifdef CS333_P2
+#elif defined (CS333_P2)
 void
 procdumpP2(struct proc *p, char *state)
 {
@@ -1121,6 +1137,21 @@ procdumpP2(struct proc *p, char *state)
   cprintf("%d\t%s\t     %d  \t%d\t%d\t%d.%s%d\t%d.%s%d\t%s\t%d\t",
           p->pid, p->name, p->uid, p->gid, ppid, total_s, total_zeros,
           total_ms, cpu_s, cpu_zeros, cpu_ms, state, p->sz);
+}
+#elif defined (CS333_P1)
+void
+procdumpP1(struct proc *p, char *state)
+{
+  uint calcTicks = ticks - p->start_ticks;
+  uint seconds = calcTicks / 1000;
+  uint milli = calcTicks % 1000;
+
+  cprintf("%d\t%s\t     %d.", p->pid, p->name, seconds);
+  if (milli < 10)
+  	cprintf("00");
+  else if (milli < 100)
+  	cprintf("0");
+  cprintf("%d\t%s\t%d\t", milli, state, p->sz);
 }
 #endif
 
@@ -1154,7 +1185,9 @@ procdump(void)
     else
       state = "???";
 
-    #if defined(CS333_P3)
+    #if defined(CS333_P4)
+    procdumpP4(p, state);
+    #elif defined(CS333_P3)
     procdumpP2(p, state);
     #elif defined(CS333_P2)
     procdumpP2(p, state);
