@@ -1383,3 +1383,51 @@ zombieList(void)
   release(&ptable.lock);
 }
 #endif
+
+#ifdef CS333_P4
+int
+setpriority(int pid, int priority)
+{
+  if (priority < 0 || priority > MAXPRIO || pid < 0)
+    return -1;
+
+  struct proc *p;
+  int found = 0;
+
+  acquire(&ptable.lock);
+  // look through all lists searching for proc
+  for(int i = EMBRYO; i <= ZOMBIE; i++){
+    p = ptable.list[i].head;
+
+    while(p != NULL || found == 0){
+      // proc found
+      if (p->pid == pid)
+        found = 1;
+    }
+    if(found == 1)
+      break;
+    p = p->next;
+  }
+  // if process couldn't be found
+  if(found == 0){
+    release(&ptable.lock);
+    return -1;
+  }
+
+  p->priority = priority;
+  p->budget = DEFAULT_BUDGET;
+
+  release(&ptable.lock);
+  return 0;
+}
+
+int
+getpriority(int pid)
+{
+  if (pid < 0)
+    return -1;
+
+  // TODO: everything
+  return 0;
+}
+#endif
