@@ -1421,6 +1421,11 @@ zombieList(void)
 struct proc*
 findproc(int pid)
 {
+
+  // make sure lock is being held
+  if(!holding(&ptable.lock))
+    panic("findproc ptable.lock");
+
   struct proc* p = NULL;
 
   // look through all lists searching for proc
@@ -1434,6 +1439,7 @@ findproc(int pid)
         return p;
       p = p->next;
     }
+
   }
   return p;
 }
@@ -1470,7 +1476,16 @@ getpriority(int pid)
   if (pid < 0)
     return -1;
 
-  // TODO: everything
-  return 0;
+  struct proc *p = NULL;
+  acquire(&ptable.lock);
+
+  p = findproc(pid);
+  if (p == NULL){
+    release(&ptable.lock);
+    return -1;
+  }
+
+  release(&ptable.lock);
+  return p->priority;
 }
 #endif
