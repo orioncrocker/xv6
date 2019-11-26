@@ -10,7 +10,11 @@ main(void) {
   struct uproc *p = malloc(sizeof(struct uproc)*NPROC);
   int procs = getprocs(NPROC, p);
 
+  #ifdef CS333_P4
+  printf(1, "PID\tName\tUID\tGID\tPPID\tPrio\tElapsed\tCPU\tState\tSize\n");
+  #else
   printf(1, "PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\n");
+  #endif
 
   for (int i = 0; i < procs; i++) {
     // calculate elapsed time
@@ -33,10 +37,17 @@ main(void) {
     else if (cpu_ms < 100)
       cpu_zeros = "0";
 
+    #ifdef CS333_P4
+    printf(1, "%d\t%s\t%d\t%d\t%d\t%d\t%d.%s%d\t%d.%s%d\t%s\t%d\n",
+           p[i].pid, p[i].name, p[i].uid, p[i].gid, p[i].ppid, p[i].priority,
+           elapsed_s, elapsed_zeros, elapsed_ms, cpu_s, cpu_zeros, cpu_ms,
+           p[i].state, p[i].size);
+    #else
     printf(1, "%d\t%s\t%d\t%d\t%d\t%d.%s%d\t%d.%s%d\t%s\t%d\n",
            p[i].pid, p[i].name, p[i].uid, p[i].gid, p[i].ppid,
            elapsed_s, elapsed_zeros, elapsed_ms, cpu_s, cpu_zeros, cpu_ms,
            p[i].state, p[i].size);
+    #endif
   }
   free(p);
   exit();

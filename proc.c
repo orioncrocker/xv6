@@ -1234,6 +1234,11 @@ getprocs(uint max, struct uproc* table) {
     table[i].size = p->sz;
     safestrcpy(table[i].name, p->name, STRMAX);
     safestrcpy(table[i].state, states[p->state], STRMAX);
+
+    #ifdef CS333_P4
+    table[i].priority = p->priority;
+    #endif
+
     ++i;
   }
 
