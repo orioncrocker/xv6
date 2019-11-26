@@ -1418,31 +1418,41 @@ zombieList(void)
 #endif
 
 #ifdef CS333_P4
+struct proc*
+findproc(int pid)
+{
+  struct proc* p = NULL;
+
+  // look through all lists searching for proc
+  for(int i = EMBRYO; i <= ZOMBIE; i++){
+    p = ptable.list[i].head;
+
+    // go through list
+    while(p != NULL){
+      // proc found
+      if (p->pid == pid)
+        return p;
+      p = p->next;
+    }
+  }
+  return p;
+}
+
 int
 setpriority(int pid, int priority)
 {
   if (priority < 0 || priority > MAXPRIO || pid < 0)
     return -1;
 
-  struct proc *p;
-  int found = 0;
+  struct proc *p = NULL;
 
   acquire(&ptable.lock);
-  // look through all lists searching for proc
-  for(int i = EMBRYO; i <= ZOMBIE; i++){
-    p = ptable.list[i].head;
 
-    while(p != NULL || found == 0){
-      // proc found
-      if (p->pid == pid)
-        found = 1;
-    }
-    if(found == 1)
-      break;
-    p = p->next;
-  }
+  // go look for proc
+  p = findproc(pid);
+
   // if process couldn't be found
-  if(found == 0){
+  if(p == NULL){
     release(&ptable.lock);
     return -1;
   }

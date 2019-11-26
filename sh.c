@@ -152,6 +152,8 @@ setbuiltin(char *p)
 
   p += strlen("_set");
   while (strncmp(p, " ", 1) == 0) p++; // chomp spaces
+
+  // set uid
   if (strncmp("uid", p, 3) == 0) {
     p += strlen("uid");
     while (strncmp(p, " ", 1) == 0) p++; // chomp spaces
@@ -159,15 +161,26 @@ setbuiltin(char *p)
     rc = (setuid(i));
     if (rc == 0)
       return 0;
-  } else
-  if (strncmp("gid", p, 3) == 0) {
+
+  // set gid
+  } else if (strncmp("gid", p, 3) == 0) {
     p += strlen("gid");
     while (strncmp(p, " ", 1) == 0) p++; // chomp spaces
     i = atoi(p);
     rc = (setgid(i));
     if (rc == 0)
       return 0;
+
+  // set priority
+  } else if (strncmp("priority", p, 8) == 0) {
+    p += strlen("priority");
+    while (strncmp(p, " ", 1) == 0) p++; // chomp spaces
+    i = atoi(p);
+    rc = (setpriority(getpid(), i));
+    if (rc == 0)
+      return 0;
   }
+
   printf(2, "Invalid _set parameter\n");
   return -1;
 }
