@@ -12,7 +12,6 @@ struct ptrs {
   struct proc* head;
   struct proc* tail;
 };
-
 // provided helper functions
 static void initProcessLists(void);
 static void initFreeList(void);
@@ -156,14 +155,15 @@ allocproc(void)
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
-  #ifdef CS333_P1
   // assign number of ticks to start_ticks
   p->start_ticks = ticks;
-  #endif
-  #ifdef CS333_P2
   // initialize both cpu_ticks values to 0
   p->cpu_ticks_total = 0;
   p->cpu_ticks_in = 0;
+
+  #ifdef CS333_P4
+  p->priority = MAXPRIO;
+  p->budget = DEFAULT_BUDGET;
   #endif
 
   return p;
@@ -241,6 +241,11 @@ userinit(void)
   acquire(&ptable.lock);
   initProcessLists();
   initFreeList();
+
+  #ifdef CS333_P4
+  ptable.PromoteAtTime = ticks + TICKS_TO_PROMOTE;
+  #endif
+
   release(&ptable.lock);
 
   p = allocproc();
@@ -262,10 +267,13 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
-  #ifdef CS333_P2
   p->parent = 0;
   p->uid = DEFAULT_UID;
   p->gid = DEFAULT_GID;
+
+  #ifdef CS333_P4
+  p->priority = MAXPRIO;
+  p->budget = DEFAULT_BUDGET;
   #endif
 
   // this assignment to p->state lets other cores
@@ -282,8 +290,13 @@ userinit(void)
   assertState(p, EMBRYO, "userinit", 224);
   p->state = RUNNABLE;
 
+  #ifdef CS333_P4
+  // no need to check priority before assigning
+  stateListAdd(&ptable.ready[p->priority], p);
+  #else
   // add first process to RUNNABLE list
   stateListAdd(&ptable.list[RUNNABLE], p);
+  #endif
 
   release(&ptable.lock);
 }
@@ -386,11 +399,8 @@ fork(void)
   newproc->sz = curproc->sz;
   newproc->parent = curproc;
   *newproc->tf = *curproc->tf;
-
-  #ifdef CS333_P2
   newproc->uid = curproc->uid;
   newproc->gid = curproc->gid;
-  #endif
 
   // Clear %eax so that fork returns 0 in the child.
   newproc->tf->eax = 0;
@@ -708,6 +718,26 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
 
+    #ifdef CS333_P4
+    // Check if it is time to promote procs
+    if(ticks >= ptable.PromoteAtTime){
+      for(int i = 0; i < MAXPRIO; i++){
+        p = ptable.ready[i].head;
+        struct proc *next = NULL;
+
+        while(p != NULL) {
+          next = p->next;
+          if (stateListRemove(&ptable.ready[i], p) < 0)
+            panic("Process is not in correct READY list. scheduler");
+          p->priority++;
+          assertState(p, RUNNABLE, "scheduler", 733);
+          stateListAdd(&ptable.ready[i+1], p);
+          p = next;
+        }
+      }
+    }
+    #endif
+
     p = ptable.list[RUNNABLE].head;
 
     if(p != NULL){
@@ -721,13 +751,15 @@ scheduler(void)
       if (stateListRemove(&ptable.list[RUNNABLE], p) < 0)
         panic("Process is not in RUNNABLE list. scheduler");
       assertState(p, RUNNABLE, "scheduler", 571);
-
       p->state = RUNNING;
-      stateListAdd(&ptable.list[RUNNING], p);
 
-      #ifdef CS333_P2
-      p->cpu_ticks_in = ticks;
+      #ifdef CS333_P4
+      stateListAdd(&ptable.ready[p->priority]);
+      #else
+      stateListAdd(&ptable.list[RUNNING], p);
       #endif
+
+      p->cpu_ticks_in = ticks;
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
@@ -841,10 +873,20 @@ yield(void)
   struct proc *curproc = myproc();
 
   acquire(&ptable.lock);  //DOC: yieldlock
+  #ifdef CS333_P4
+  if(stateListRemove(&ptable.ready[curproc->priority], curproc < 0)
+    panic("Process is not in correct READY list. yield");
+  #else
   if(stateListRemove(&ptable.list[RUNNING], curproc) < 0)
     panic("Process is not in RUNNING list. yield");
+  #endif
   assertState(curproc, RUNNING, "yield", 724);
   curproc->state = RUNNABLE;
+  #ifdef CS333_P4
+  // adjust priority
+  if (curproc->priority > 0)
+    curproc->priority--;
+  #endif
   stateListAdd(&ptable.list[RUNNABLE], curproc);
   sched();
   release(&ptable.lock);
@@ -1079,8 +1121,6 @@ kill(int pid)
 void
 procdumpP4(struct proc *p, char *state)
 {
-  //define HEADER "\nPID\tName         UID\tGID\tPPID\tPrio\tElapsed\tCPU\tState\tSize\t PCs\n"
-
   uint ppid = p->parent ? p->parent->pid : p->pid;
 
   // calculate elapsed time
@@ -1321,12 +1361,12 @@ initProcessLists()
     ptable.list[i].head = NULL;
     ptable.list[i].tail = NULL;
   }
-#ifdef CS333_P4
+  #ifdef CS333_P4
   for (i = 0; i <= MAXPRIO; i++) {
     ptable.ready[i].head = NULL;
     ptable.ready[i].tail = NULL;
   }
-#endif
+  #endif
 }
 
 static void
