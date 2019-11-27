@@ -719,7 +719,7 @@ scheduler(void)
     acquire(&ptable.lock);
 
     #ifdef CS333_P4
-    // Check if it is time to promote procs
+    // Check if it is time to promote all ready procs
     if(ticks >= ptable.PromoteAtTime){
       for(int i = 0; i < MAXPRIO; i++){
         p = ptable.ready[i].head;
@@ -735,6 +735,8 @@ scheduler(void)
           p = next;
         }
       }
+      // update promote time
+      ptable.PromoteAtTime = ticks + TICKS_TO_PROMOTE;
     }
     #endif
 
@@ -754,7 +756,7 @@ scheduler(void)
       p->state = RUNNING;
 
       #ifdef CS333_P4
-      stateListAdd(&ptable.ready[p->priority]);
+      stateListAdd(&ptable.ready[p->priority], p);
       #else
       stateListAdd(&ptable.list[RUNNING], p);
       #endif
@@ -860,6 +862,15 @@ sched(void)
   intena = mycpu()->intena;
   #ifdef CS333_P2
   p->cpu_ticks_total += (ticks - p->cpu_ticks_in);
+  #endif
+  #ifdef CS333_P4
+  p->budget = budget - (cpu_ticks_total - cpu_ticks_in);
+  // check if process needs to be demoted
+  if(p->budget <= 0) {
+    if(p->priority > 0)
+      p->priority--;
+    p->budget = DEFAULT_BUDGET;
+  }
   #endif
   swtch(&p->context, mycpu()->scheduler);
   mycpu()->intena = intena;
