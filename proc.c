@@ -8,7 +8,7 @@
 #include "spinlock.h"
 
 #ifdef CS333_P4
-static int promoteprocs();
+static int promoteProcs();
 #endif
 #ifdef CS333_P3
 struct ptrs {
@@ -761,19 +761,20 @@ scheduler(void)
     #ifdef CS333_P4
     // Check if it is time to promote all ready procs
     if(ticks >= ptable.PromoteAtTime){
-      promoteprocs();
+      promoteProcs();
 
       // update promote time
       ptable.PromoteAtTime = ticks + TICKS_TO_PROMOTE;
     }
 
     // find a proc from one of the priority lists, starting with highest priority
-    /*
-    for(int i = MAXPRIO; i >= 0 && p != NULL; i--)
-      p = ptable.ready[i].head;
-    */
-    p = ptable.ready[MAXPRIO].head;
 
+    // by default get MAXPRIO
+    p = ptable.ready[MAXPRIO].head;
+    if(p == NULL){
+      for(int i = MAXPRIO-1; i >= 0 && p == NULL; i--)
+        p = ptable.ready[i].head;
+    }
     #else
 
     p = ptable.list[RUNNABLE].head;
@@ -901,19 +902,6 @@ sched(void)
   #ifdef CS333_P2
   p->cpu_ticks_total += (ticks - p->cpu_ticks_in);
   #endif
-
-  /*
-  #ifdef CS333_P4
-  p->budget = p->budget - (p->cpu_ticks_total - p->cpu_ticks_in);
-  // check if process needs to be demoted
-  if(p->budget <= 0) {
-    if(p->priority > 0)
-      p->priority--;
-    p->budget = DEFAULT_BUDGET;
-  }
-  #endif
-  */
-
   swtch(&p->context, mycpu()->scheduler);
   mycpu()->intena = intena;
 }
@@ -932,11 +920,11 @@ yield(void)
   curproc->state = RUNNABLE;
   #ifdef CS333_P4
   // calculate new budget
-  curproc->budget = curproc->budget - (curproc->cpu_ticks_total - curproc->cpu_ticks_in);
+  int budget = curproc->budget - curproc->cpu_ticks_in;
   // determine if proc needs to be demoted
-  if(curproc->budget <= 0) {
+  if(budget <= 0) {
     if(curproc->priority > 0)
-      curproc->priority--;
+      curproc->priority -= 1;
     curproc->budget = DEFAULT_BUDGET;
   }
   stateListAdd(&ptable.ready[curproc->priority], curproc);
@@ -1081,11 +1069,11 @@ wakeup1(void *chan)
       p->state = RUNNABLE;
       #ifdef CS333_P4
       // calculate new budget
-      p->budget = p->budget - (p->cpu_ticks_total - p->cpu_ticks_in);
+      int budget = p->budget - p->cpu_ticks_in;
       // determine if proc needs to be demoted
-      if(p->budget <= 0) {
+      if(budget <= 0) {
         if(p->priority > 0)
-          p->priority--;
+          p->priority -= 1;
         p->budget = DEFAULT_BUDGET;
       }
       stateListAdd(&ptable.ready[p->priority], p);
@@ -1464,6 +1452,36 @@ assertState(struct proc *p, enum procstate state, const char * func, int line)
 }
 
 // functions that output current state of lists
+#ifdef CS333_P4
+void
+readyList(void)
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+
+  cprintf("Ready List Processes:\n");
+
+  for(int i = MAXPRIO; i >= 0; i--){
+
+    // display header of list
+    if(i == MAXPRIO)
+      cprintf("MAXPRIO: ");
+    else
+      cprintf("MAXPRIO-%d: ", MAXPRIO-i);
+
+    // traverse specific list
+    for(p = ptable.ready[i].head; p != NULL; p = p->next){
+      cprintf("%d,%d", p->pid, p->priority);
+      if(p->next)
+        cprintf(" -> ");
+    }
+    cprintf("\n");
+  }
+
+  cprintf("\n$ ");
+  release(&ptable.lock);
+}
+#else
 void
 readyList(void)
 {
@@ -1480,6 +1498,7 @@ readyList(void)
   cprintf("\n$ ");
   release(&ptable.lock);
 }
+#endif
 
 void
 freeList(void)
@@ -1534,11 +1553,11 @@ zombieList(void)
 #ifdef CS333_P4
 // helper function to prmote ALL procs
 int
-promoteprocs()
+promoteProcs()
 {
   // make sure lock is being held
   if(!holding(&ptable.lock))
-    panic("promoteprocs ptable.lock");
+    panic("promoteProcs ptable.lock");
 
   int totalpromoted = 0;
   struct proc *p = NULL;
@@ -1549,7 +1568,7 @@ promoteprocs()
     // go through list
     while(p != NULL){
       if(p->priority < MAXPRIO){
-        p->priority++;
+        p->priority += 1;
         totalpromoted++;
       }
       p = p->next;
@@ -1564,8 +1583,8 @@ promoteprocs()
       next = p->next;
       if (stateListRemove(&ptable.ready[i], p) < 0)
         panic("Process is not in correct READY list. scheduler");
-      assertState(p, RUNNABLE, "promoteprocs", 1506);
-      p->priority++;
+      assertState(p, RUNNABLE, "promoteProcs", 1506);
+      p->priority += 1;
       stateListAdd(&ptable.ready[p->priority], p);
 
       p = next;
