@@ -8,7 +8,7 @@
 #include "spinlock.h"
 
 #ifdef CS333_P4
-//static int promoteprocs();
+static int promoteprocs();
 #endif
 #ifdef CS333_P3
 struct ptrs {
@@ -760,7 +760,6 @@ scheduler(void)
 
     #ifdef CS333_P4
     // Check if it is time to promote all ready procs
-    /*
     if(ticks >= ptable.PromoteAtTime){
       promoteprocs();
 
@@ -768,13 +767,15 @@ scheduler(void)
       ptable.PromoteAtTime = ticks + TICKS_TO_PROMOTE;
     }
 
-    p = ptable.list[RUNNABLE].head;
-    if(p == NULL)
-      p = ptable.ready[MAXPRIO].head;
+    // find a proc from one of the priority lists, starting with highest priority
+    /*
+    for(int i = MAXPRIO; i >= 0 && p != NULL; i--)
+      p = ptable.ready[i].head;
     */
-
     p = ptable.ready[MAXPRIO].head;
+
     #else
+
     p = ptable.list[RUNNABLE].head;
     #endif
 
@@ -787,7 +788,7 @@ scheduler(void)
       switchuvm(p);
 
       #ifdef CS333_P4
-      if (stateListRemove(&ptable.ready[MAXPRIO], p) < 0)
+      if (stateListRemove(&ptable.ready[p->priority], p) < 0)
         panic("Process is not in correct READY list. scheduler");
       #else
       if (stateListRemove(&ptable.list[RUNNABLE], p) < 0)
@@ -930,8 +931,15 @@ yield(void)
   assertState(curproc, RUNNING, "yield", 724);
   curproc->state = RUNNABLE;
   #ifdef CS333_P4
-  //TODO: adjust priority based on budget and assign it to proper list
-  stateListAdd(&ptable.ready[MAXPRIO], curproc);
+  // calculate new budget
+  curproc->budget = curproc->budget - (curproc->cpu_ticks_total - curproc->cpu_ticks_in);
+  // determine if proc needs to be demoted
+  if(curproc->budget <= 0) {
+    if(curproc->priority > 0)
+      curproc->priority--;
+    curproc->budget = DEFAULT_BUDGET;
+  }
+  stateListAdd(&ptable.ready[curproc->priority], curproc);
   #else
   stateListAdd(&ptable.list[RUNNABLE], curproc);
   #endif
@@ -1072,8 +1080,15 @@ wakeup1(void *chan)
 
       p->state = RUNNABLE;
       #ifdef CS333_P4
-      //TODO: adjust priority based on budget and move to appropriate list
-      stateListAdd(&ptable.ready[MAXPRIO], p);
+      // calculate new budget
+      p->budget = p->budget - (p->cpu_ticks_total - p->cpu_ticks_in);
+      // determine if proc needs to be demoted
+      if(p->budget <= 0) {
+        if(p->priority > 0)
+          p->priority--;
+        p->budget = DEFAULT_BUDGET;
+      }
+      stateListAdd(&ptable.ready[p->priority], p);
       #else
       stateListAdd(&ptable.list[RUNNABLE], p);
       #endif
@@ -1196,7 +1211,8 @@ procdumpP4(struct proc *p, char *state)
   else if (cpu_ms < 100)
     cpu_zeros = "0";
 
-  cprintf("%d\t%s\t  %d  \t%d\t%d\t%d\t%d.%s%d\t%d.%s%d\t%s\t%d\t",
+  //#define HEADER "\nPID\tName         UID\tGID\tPPID\tPrio\tElapsed\tCPU\tState\tSize\t PCs\n"
+  cprintf("%d\t%s\t     %d\t\t%d\t%d\t%d\t%d.%s%d\t%d.%s%d\t%s\t%d\t",
           p->pid, p->name, p->uid, p->gid, ppid, p->priority, total_s,
           total_zeros, total_ms, cpu_s, cpu_zeros, cpu_ms, state, p->sz);
 
@@ -1517,8 +1533,6 @@ zombieList(void)
 
 #ifdef CS333_P4
 // helper function to prmote ALL procs
-
-/*
 int
 promoteprocs()
 {
@@ -1560,7 +1574,6 @@ promoteprocs()
   }
   return totalpromoted;
 }
-*/
 
 struct proc*
 findproc(int pid)
