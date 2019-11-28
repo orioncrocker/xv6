@@ -122,7 +122,7 @@ allocproc(void)
   // remove from UNUSED list
   if(stateListRemove(&ptable.list[UNUSED], p) < 0)
     panic("Process is not in UNUSED list. allocproc");
-  assertState(p, UNUSED, "allocproc", 116);
+  assertState(p, UNUSED, __FILE__, __LINE__);
   p->state = EMBRYO;
   p->pid = nextpid++;
 
@@ -136,7 +136,7 @@ allocproc(void)
     acquire(&ptable.lock);
     if(stateListRemove(&ptable.list[EMBRYO], p) < 0)
       panic("Process is not in EMBRYO list. allocproc");
-    assertState(p, EMBRYO, "allocproc", 130);
+    assertState(p, EMBRYO, __FILE__, __LINE__);
     p->state = UNUSED;
     stateListAdd(&ptable.list[UNUSED], p);
     release(&ptable.lock);
@@ -289,7 +289,7 @@ userinit(void)
     panic("Process is not in EMBRYO list. userinit");
 
   // assert that process is actually an EMBRYO
-  assertState(p, EMBRYO, "userinit", 224);
+  assertState(p, EMBRYO, __FILE__, __LINE__);
   p->state = RUNNABLE;
 
   #ifdef CS333_P4
@@ -386,7 +386,7 @@ fork(void)
 
     if(stateListRemove(&ptable.list[EMBRYO], newproc) < 0)
       panic("Process is not in EMBRYO list. fork");
-    assertState(newproc, EMBRYO, "fork", 296);
+    assertState(newproc, EMBRYO, __FILE__, __LINE__);
     newproc->state = UNUSED;
     stateListAdd(&ptable.list[UNUSED], newproc);
 
@@ -415,7 +415,7 @@ fork(void)
 
   if(stateListRemove(&ptable.list[EMBRYO], newproc) < 0)
     panic("Process is not in EMBRYO list. fork");
-  assertState(newproc, EMBRYO, "fork", 333);
+  assertState(newproc, EMBRYO, __FILE__, __LINE__);
   newproc->state = RUNNABLE;
 
   #ifdef CS333_P4
@@ -524,7 +524,7 @@ exit(void)
 
   if(stateListRemove(&ptable.list[RUNNING], curproc) < 0)
     panic("Process is not in RUNNING list. exit");
-  assertState(curproc, RUNNING, "exit", 505);
+  assertState(curproc, RUNNING, __FILE__, __LINE__);
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
@@ -623,7 +623,7 @@ wait(void)
 
           if(stateListRemove(&ptable.list[ZOMBIE], p) < 0)
             panic("Process is not in ZOMBIE list. wait");
-          assertState(p, ZOMBIE, "wait", 604);
+          assertState(p, ZOMBIE, __FILE__, __LINE__);
 
           p->state = UNUSED;
           stateListAdd(&ptable.list[UNUSED], p);
@@ -659,7 +659,7 @@ wait(void)
 
           if(stateListRemove(&ptable.list[ZOMBIE], p) < 0)
             panic("Process is not in ZOMBIE list. wait");
-          assertState(p, ZOMBIE, "wait", 604);
+          assertState(p, ZOMBIE, __FILE__, __LINE__);
 
           p->state = UNUSED;
           stateListAdd(&ptable.list[UNUSED], p);
@@ -795,7 +795,7 @@ scheduler(void)
       if (stateListRemove(&ptable.list[RUNNABLE], p) < 0)
         panic("Process is not in RUNNABLE list. scheduler");
       #endif
-      assertState(p, RUNNABLE, "scheduler", 571);
+      assertState(p, RUNNABLE, __FILE__, __LINE__);
       p->state = RUNNING;
 
       stateListAdd(&ptable.list[RUNNING], p);
@@ -916,7 +916,7 @@ yield(void)
   acquire(&ptable.lock);  //DOC: yieldlock
   if(stateListRemove(&ptable.list[RUNNING], curproc) < 0)
     panic("Process is not in RUNNING list. yield");
-  assertState(curproc, RUNNING, "yield", 724);
+  assertState(curproc, RUNNING, __FILE__, __LINE__);
   curproc->state = RUNNABLE;
   #ifdef CS333_P4
   // calculate new budget
@@ -995,7 +995,7 @@ sleep(void *chan, struct spinlock *lk)
   if(stateListRemove(&ptable.list[RUNNING], p) < 0)
     panic("Process is not in RUNNING list. sleep");
 
-  assertState(p, RUNNING, "sleep", 790);
+  assertState(p, RUNNING, __FILE__, __LINE__);
 
   p->state = SLEEPING;
   stateListAdd(&ptable.list[SLEEPING], p);
@@ -1064,7 +1064,7 @@ wakeup1(void *chan)
 
       if(stateListRemove(&ptable.list[SLEEPING], p) < 0)
         panic("Process is not in SLEEPING list. wakeup1");
-      assertState(p, SLEEPING, "wakeup1", 833);
+      assertState(p, SLEEPING, __FILE__, __LINE__);
 
       p->state = RUNNABLE;
       #ifdef CS333_P4
@@ -1130,7 +1130,7 @@ kill(int pid)
         if(p->state == SLEEPING){
           if(stateListRemove(&ptable.list[SLEEPING], p) < 0)
             panic("Process is not in SLEEPING list. kill");
-          assertState(p, SLEEPING, "kill", 884);
+          assertState(p, SLEEPING, __FILE__, __LINE__);
           p->state = RUNNABLE;
           stateListAdd(&ptable.list[RUNNABLE], p);
         }
@@ -1583,7 +1583,7 @@ promoteProcs()
       next = p->next;
       if (stateListRemove(&ptable.ready[i], p) < 0)
         panic("Process is not in correct READY list. scheduler");
-      assertState(p, RUNNABLE, "promoteProcs", 1506);
+      assertState(p, RUNNABLE, __FILE__, __LINE__);
       p->priority += 1;
       stateListAdd(&ptable.ready[p->priority], p);
 
