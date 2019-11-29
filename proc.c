@@ -762,14 +762,13 @@ scheduler(void)
     // Check if it is time to promote all ready procs
     if(ticks >= ptable.PromoteAtTime){
       promoteProcs();
+      //cprintf("Updating procs\n");
 
       // update promote time
       ptable.PromoteAtTime = ticks + TICKS_TO_PROMOTE;
     }
 
     // find a proc from one of the priority lists, starting with highest priority
-
-    // by default get MAXPRIO
     p = ptable.ready[MAXPRIO].head;
     // if no procs at max, check all other priority lists
     if(p == NULL){
@@ -777,7 +776,6 @@ scheduler(void)
         p = ptable.ready[i].head;
     }
     #else
-
     p = ptable.list[RUNNABLE].head;
     #endif
 
@@ -1075,18 +1073,6 @@ wakeup1(void *chan)
       p->state = RUNNABLE;
 
       #ifdef CS333_P4
-      // calculate new budget
-      int budget = p->budget - (ticks - p->cpu_ticks_in);
-
-      // determine if proc needs to be demoted
-      if(budget <= 0) {
-        if(p->priority > 0)
-          p->priority -= 1;
-        p->budget = DEFAULT_BUDGET;
-      }
-      else
-        p->budget = budget;
-
       stateListAdd(&ptable.ready[p->priority], p);
       #else
       stateListAdd(&ptable.list[RUNNABLE], p);
@@ -1475,6 +1461,8 @@ readyList(void)
     // display header of list
     if(i == MAXPRIO)
       cprintf("MAXPRIO: ");
+    else if (i == 0)
+      cprintf("0: ");
     else
       cprintf("MAXPRIO-%d: ", MAXPRIO-i);
 
@@ -1571,20 +1559,7 @@ promoteProcs()
   int totalpromoted = 0;
   struct proc *p = NULL;
 
-  for(int i = EMBRYO; i <= ZOMBIE; i++){
-    p = ptable.list[i].head;
-
-    // go through list
-    while(p != NULL){
-      if(p->priority < MAXPRIO){
-        p->priority += 1;
-        totalpromoted++;
-      }
-      p = p->next;
-    }
-  }
-
-  for(int i = 0; i < MAXPRIO; i++){
+  for(int i = MAXPRIO-1; i >= 0; i--){
     p = ptable.ready[i].head;
     struct proc *next = NULL;
 
@@ -1660,7 +1635,18 @@ setpriority(int pid, int priority)
     return -1;
   }
 
+  int previousprio = p->priority;
+
   p->priority = priority;
+
+  // move to another list if needed
+  if (p->state == RUNNABLE) {
+    if(stateListRemove(&ptable.ready[previousprio], p) < 0)
+      panic("Process is not in correct READY list. setpriority");
+    assertState(p, RUNNABLE, __FILE__, __LINE__);
+    stateListAdd(&ptable.ready[priority], p);
+  }
+
   p->budget = DEFAULT_BUDGET;
 
   release(&ptable.lock);
