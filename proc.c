@@ -636,7 +636,7 @@ wait(void)
     }
     #ifdef CS333_P4
     // Scan through all ready lists
-    for(int i = 0; i <= MAXPRIO; i++){
+    for(int i = MAXPRIO; i >= 0; i--){
       p = ptable.ready[i].head;
 
       while(p != NULL){
@@ -771,6 +771,7 @@ scheduler(void)
 
     // by default get MAXPRIO
     p = ptable.ready[MAXPRIO].head;
+    // if no procs at max, check all other priority lists
     if(p == NULL){
       for(int i = MAXPRIO-1; i >= 0 && p == NULL; i--)
         p = ptable.ready[i].head;
@@ -918,15 +919,20 @@ yield(void)
     panic("Process is not in RUNNING list. yield");
   assertState(curproc, RUNNING, __FILE__, __LINE__);
   curproc->state = RUNNABLE;
+
   #ifdef CS333_P4
   // calculate new budget
-  int budget = curproc->budget - curproc->cpu_ticks_in;
+  int budget = curproc->budget - (ticks - curproc->cpu_ticks_in);
+
   // determine if proc needs to be demoted
   if(budget <= 0) {
     if(curproc->priority > 0)
       curproc->priority -= 1;
     curproc->budget = DEFAULT_BUDGET;
   }
+  else
+    curproc->budget = budget;
+
   stateListAdd(&ptable.ready[curproc->priority], curproc);
   #else
   stateListAdd(&ptable.list[RUNNABLE], curproc);
@@ -1067,15 +1073,20 @@ wakeup1(void *chan)
       assertState(p, SLEEPING, __FILE__, __LINE__);
 
       p->state = RUNNABLE;
+
       #ifdef CS333_P4
       // calculate new budget
-      int budget = p->budget - p->cpu_ticks_in;
+      int budget = p->budget - (ticks - p->cpu_ticks_in);
+
       // determine if proc needs to be demoted
       if(budget <= 0) {
         if(p->priority > 0)
           p->priority -= 1;
         p->budget = DEFAULT_BUDGET;
       }
+      else
+        p->budget = budget;
+
       stateListAdd(&ptable.ready[p->priority], p);
       #else
       stateListAdd(&ptable.list[RUNNABLE], p);
@@ -1199,11 +1210,9 @@ procdumpP4(struct proc *p, char *state)
   else if (cpu_ms < 100)
     cpu_zeros = "0";
 
-  //#define HEADER "\nPID\tName         UID\tGID\tPPID\tPrio\tElapsed\tCPU\tState\tSize\t PCs\n"
   cprintf("%d\t%s\t     %d\t\t%d\t%d\t%d\t%d.%s%d\t%d.%s%d\t%s\t%d\t",
           p->pid, p->name, p->uid, p->gid, ppid, p->priority, total_s,
           total_zeros, total_ms, cpu_s, cpu_zeros, cpu_ms, state, p->sz);
-
 }
 #elif defined (CS333_P2)
 void
@@ -1471,7 +1480,7 @@ readyList(void)
 
     // traverse specific list
     for(p = ptable.ready[i].head; p != NULL; p = p->next){
-      cprintf("%d,%d", p->pid, p->priority);
+      cprintf("%d,%d,%d", p->pid, p->priority, p->budget);
       if(p->next)
         cprintf(" -> ");
     }
@@ -1551,7 +1560,7 @@ zombieList(void)
 #endif
 
 #ifdef CS333_P4
-// helper function to prmote ALL procs
+// helper function to promote ALL procs
 int
 promoteProcs()
 {
@@ -1595,12 +1604,12 @@ promoteProcs()
 }
 
 struct proc*
-findproc(int pid)
+findProc(int pid)
 {
 
   // make sure lock is being held
   if(!holding(&ptable.lock))
-    panic("findproc ptable.lock");
+    panic("findProc ptable.lock");
 
   struct proc* p = NULL;
 
@@ -1615,9 +1624,21 @@ findproc(int pid)
         return p;
       p = p->next;
     }
-
   }
-  return p;
+
+  // look through all ready[priority] lists
+  for(int i = MAXPRIO; i >= 0; i--){
+    p = ptable.ready[i].head;
+
+    // go through list
+    while(p != NULL){
+      // proc found
+      if (p->pid == pid)
+        return p;
+      p = p->next;
+    }
+  }
+  return NULL;
 }
 
 int
@@ -1631,7 +1652,7 @@ setpriority(int pid, int priority)
   acquire(&ptable.lock);
 
   // go look for proc
-  p = findproc(pid);
+  p = findProc(pid);
 
   // if process couldn't be found
   if(p == NULL){
@@ -1655,13 +1676,14 @@ getpriority(int pid)
   struct proc *p = NULL;
   acquire(&ptable.lock);
 
-  p = findproc(pid);
+  p = findProc(pid);
   if (p == NULL){
     release(&ptable.lock);
     return -1;
   }
+  int priority = p->priority;
 
   release(&ptable.lock);
-  return p->priority;
+  return priority;
 }
 #endif
