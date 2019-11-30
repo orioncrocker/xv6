@@ -1145,7 +1145,11 @@ kill(int pid)
             panic("Process is not in SLEEPING list. kill");
           assertState(p, SLEEPING, __FILE__, __LINE__);
           p->state = RUNNABLE;
+          #ifdef CS333_P4
+          stateListAdd(&ptable.ready[p->priority], p);
+          #else
           stateListAdd(&ptable.list[RUNNABLE], p);
+          #endif
         }
 
         release(&ptable.lock);
@@ -1155,6 +1159,23 @@ kill(int pid)
       p = p->next;
     }
   }
+
+  #ifdef CS333_P4
+  // look through all running lists as well
+  for(int i = MAXPRIO; i >= 0; i--){
+    p = ptable.list[i].head;
+    while(p != NULL){
+      if(p->pid == pid){
+        p->killed = 1;
+
+        release(&ptable.lock);
+        return 0;
+      }
+      // the search continues
+      p = p->next;
+    }
+  }
+  #endif
 
   release(&ptable.lock);
   return -1;
@@ -1484,12 +1505,28 @@ readyList(void)
 
     // traverse specific list
     for(p = ptable.ready[i].head; p != NULL; p = p->next){
+      if(p == ptable.ready[i].head)
+        cprintf("HEAD: ");
       cprintf("%d,%d,%d", p->pid, p->priority, p->budget);
       if(p->next)
         cprintf(" -> ");
+      if(!p->next)
+        cprintf(" TAIL");
     }
     if(i > 0)
       cprintf("\n");
+  }
+
+  // bugchecking, see if any procs on RUNNABLE list
+  p = ptable.list[RUNNABLE].head;
+  if(p != NULL){
+    cprintf("\nBUG!! RUNNABLE: ");
+    while(p != NULL) {
+      cprintf("%d,%d,%d", p->pid, p->priority, p->budget);
+    if(p->next)
+      cprintf(" -> ");
+    p = p->next;
+    }
   }
 
   cprintf("\n$ ");
@@ -1586,16 +1623,36 @@ promoteProcs()
   int totalpromoted = 0;
   struct proc *p = NULL;
 
+  // update sleeping procs
+  p = ptable.list[SLEEPING].head;
+  while(p != NULL){
+    if(p->priority < MAXPRIO)
+      p->priority += 1;
+    p->budget = DEFAULT_BUDGET;
+    p = p->next;
+  }
+
+  // update running procs
+  p = ptable.list[RUNNING].head;
+  while(p != NULL){
+    if(p->priority < MAXPRIO)
+      p->priority += 1;
+    p->budget = DEFAULT_BUDGET;
+    p = p->next;
+  }
+
+  // update all ready list procs
   for(int i = MAXPRIO-1; i >= 0; i--){
     p = ptable.ready[i].head;
     struct proc *next = NULL;
 
-    while(p != NULL) {
+    while(p != NULL){
       next = p->next;
       if (stateListRemove(&ptable.ready[i], p) < 0)
         panic("Process is not in correct READY list. scheduler");
       assertState(p, RUNNABLE, __FILE__, __LINE__);
       p->priority += 1;
+      p->budget = DEFAULT_BUDGET;
       stateListAdd(&ptable.ready[p->priority], p);
 
       p = next;

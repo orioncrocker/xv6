@@ -4,7 +4,7 @@
 #include "user.h"
 #include "pdx.h"
 
-#define PrioCount MAXPRIO + 1
+#define PrioCount 1+MAXPRIO
 #define numChildren 30
 
 void
@@ -41,8 +41,9 @@ countForever(int i)
 int
 main(void)
 {
-  int i, rc;
+  printf(1, "PrioCount: %d\n", PrioCount);
 
+  int i, rc;
   for (i=0; i<numChildren; i++) {
     rc = fork();
     if (!rc) { // child
