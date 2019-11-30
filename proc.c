@@ -9,6 +9,7 @@
 
 #ifdef CS333_P4
 static int promoteProcs();
+static void assertPriority(struct proc*, int, const char *, int);
 #endif
 #ifdef CS333_P3
 struct ptrs {
@@ -790,6 +791,7 @@ scheduler(void)
       #ifdef CS333_P4
       if (stateListRemove(&ptable.ready[p->priority], p) < 0)
         panic("Process is not in correct READY list. scheduler");
+      assertPriority(p, p->priority, __FILE__, __LINE__);
       #else
       if (stateListRemove(&ptable.list[RUNNABLE], p) < 0)
         panic("Process is not in RUNNABLE list. scheduler");
@@ -1000,6 +1002,20 @@ sleep(void *chan, struct spinlock *lk)
     panic("Process is not in RUNNING list. sleep");
 
   assertState(p, RUNNING, __FILE__, __LINE__);
+
+  #ifdef CS333_P4
+  // calculate new budget
+  int budget = p->budget - (ticks - p->cpu_ticks_in);
+
+  // determine if proc needs to be demoted
+  if(budget <= 0) {
+    if(p->priority > 0)
+      p->priority -= 1;
+    p->budget = DEFAULT_BUDGET;
+  }
+  else
+    p->budget = budget;
+  #endif
 
   p->state = SLEEPING;
   stateListAdd(&ptable.list[SLEEPING], p);
@@ -1472,7 +1488,8 @@ readyList(void)
       if(p->next)
         cprintf(" -> ");
     }
-    cprintf("\n");
+    if(i > 0)
+      cprintf("\n");
   }
 
   cprintf("\n$ ");
@@ -1548,6 +1565,16 @@ zombieList(void)
 #endif
 
 #ifdef CS333_P4
+static void
+assertPriority(struct proc *p, int priority, const char * func, int line)
+{
+    if (p->priority == priority)
+      return;
+    cprintf("Error: proc priority is %s and should be %s.\nCalled from %s line %d\n",
+        p->priority, priority, func, line);
+    panic("Error: Process state incorrect in assertPriority()");
+}
+
 // helper function to promote ALL procs
 int
 promoteProcs()
