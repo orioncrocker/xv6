@@ -90,7 +90,7 @@ runTest(int n){
     if(ret == -1)
       extra++;
     if(ret == 0) {
-      for(int i = 0; i < 500000000; i++);
+      for(int i = 0; i < 200000000; i++);
       exit();
     }
   }

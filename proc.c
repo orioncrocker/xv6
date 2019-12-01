@@ -1584,9 +1584,6 @@ promoteProcs()
   if(!holding(&ptable.lock))
     panic("promoteProcs ptable.lock");
 
-  if(MAXPRIO == 0)
-    return 0;
-
   int totalpromoted = 0;
   struct proc *p = NULL;
 
@@ -1597,6 +1594,7 @@ promoteProcs()
       p->priority += 1;
     p->budget = DEFAULT_BUDGET;
     p = p->next;
+    totalpromoted++;
   }
 
   // update running procs
@@ -1606,7 +1604,11 @@ promoteProcs()
       p->priority += 1;
     p->budget = DEFAULT_BUDGET;
     p = p->next;
+    totalpromoted++;
   }
+
+  if(MAXPRIO == 0)
+    return totalpromoted;
 
   // update all ready list procs
   for(int i = MAXPRIO-1; i >= 0; i--){

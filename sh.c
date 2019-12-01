@@ -202,7 +202,7 @@ getbuiltin(char *p)
   }
   #ifdef CS333_P4
   // get priority
-  else if (strncmp("prio", p, 8) == 0) {
+  else if (strncmp("prio", p, 4) == 0) {
     printf(2, "%d\n", getpriority(getpid()));
     return 0;
   }
