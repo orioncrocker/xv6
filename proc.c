@@ -9,7 +9,6 @@
 
 #ifdef CS333_P4
 static int promoteProcs();
-static void assertPriority(struct proc*, int, const char *, int);
 #endif
 #ifdef CS333_P3
 struct ptrs {
@@ -294,7 +293,7 @@ userinit(void)
   p->state = RUNNABLE;
 
   #ifdef CS333_P4
-  stateListAdd(&ptable.ready[MAXPRIO], p);
+  stateListAdd(&ptable.ready[p->priority], p);
   #else
   stateListAdd(&ptable.list[RUNNABLE], p);
   #endif
@@ -762,8 +761,8 @@ scheduler(void)
     #ifdef CS333_P4
     // Check if it is time to promote all ready procs
     if(ticks >= ptable.PromoteAtTime){
+//      cprintf("Promoting Procs...\n");
       promoteProcs();
-      //cprintf("Updating procs\n");
 
       // update promote time
       ptable.PromoteAtTime = ticks + TICKS_TO_PROMOTE;
@@ -791,7 +790,6 @@ scheduler(void)
       #ifdef CS333_P4
       if (stateListRemove(&ptable.ready[p->priority], p) < 0)
         panic("Process is not in correct READY list. scheduler");
-      assertPriority(p, p->priority, __FILE__, __LINE__);
       #else
       if (stateListRemove(&ptable.list[RUNNABLE], p) < 0)
         panic("Process is not in RUNNABLE list. scheduler");
@@ -1505,13 +1503,9 @@ readyList(void)
 
     // traverse specific list
     for(p = ptable.ready[i].head; p != NULL; p = p->next){
-      if(p == ptable.ready[i].head)
-        cprintf("HEAD: ");
       cprintf("%d,%d,%d", p->pid, p->priority, p->budget);
       if(p->next)
         cprintf(" -> ");
-      if(!p->next)
-        cprintf(" TAIL");
     }
     if(i > 0)
       cprintf("\n");
@@ -1602,16 +1596,6 @@ zombieList(void)
 #endif
 
 #ifdef CS333_P4
-static void
-assertPriority(struct proc *p, int priority, const char * func, int line)
-{
-    if (p->priority == priority)
-      return;
-    cprintf("Error: proc priority is %s and should be %s.\nCalled from %s line %d\n",
-        p->priority, priority, func, line);
-    panic("Error: Process state incorrect in assertPriority()");
-}
-
 // helper function to promote ALL procs
 int
 promoteProcs()
@@ -1719,8 +1703,15 @@ setpriority(int pid, int priority)
     return -1;
   }
 
-  int previousprio = p->priority;
+  p->budget = DEFAULT_BUDGET;
 
+  // if priority is already at desired value
+  if(p->priority == priority){
+    release(&ptable.lock);
+    return 0;
+  }
+
+  int previousprio = p->priority;
   p->priority = priority;
 
   // move to another list if needed
@@ -1730,8 +1721,6 @@ setpriority(int pid, int priority)
     assertState(p, RUNNABLE, __FILE__, __LINE__);
     stateListAdd(&ptable.ready[priority], p);
   }
-
-  p->budget = DEFAULT_BUDGET;
 
   release(&ptable.lock);
   return 0;

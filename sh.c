@@ -171,11 +171,12 @@ setbuiltin(char *p)
   }
   #ifdef CS333_P4
   // set priority
-  else if (strncmp("priority", p, 8) == 0) {
-    p += strlen("priority");
+  else if (strncmp("prio", p, 4) == 0) {
+    p += strlen("prio");
     while (strncmp(p, " ", 1) == 0) p++; // chomp spaces
     i = atoi(p);
-    rc = (setpriority(getpid(), i));
+    // user enters pid, always sets to lowest possible priority
+    rc = (setpriority(i, 0));
     if (rc == 0)
       return 0;
   }
@@ -201,7 +202,7 @@ getbuiltin(char *p)
   }
   #ifdef CS333_P4
   // get priority
-  else if (strncmp("priority", p, 8) == 0) {
+  else if (strncmp("prio", p, 8) == 0) {
     printf(2, "%d\n", getpriority(getpid()));
     return 0;
   }

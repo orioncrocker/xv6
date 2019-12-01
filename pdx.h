@@ -33,9 +33,9 @@
 #endif
 
 #ifdef CS333_P4
-#define MAXPRIO 2
-#define TICKS_TO_PROMOTE  4500
-#define DEFAULT_BUDGET 300
+#define MAXPRIO 6
+#define TICKS_TO_PROMOTE  5000
+#define DEFAULT_BUDGET 500
 #endif
 
 #define NPROC  64  // maximum number of processes -- normally in param.h
