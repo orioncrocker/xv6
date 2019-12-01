@@ -9,6 +9,7 @@
 
 #ifdef CS333_P4
 static int promoteProcs();
+static void updateBudget(struct proc*);
 #endif
 #ifdef CS333_P3
 struct ptrs {
@@ -609,9 +610,9 @@ wait(void)
           continue;
         }
 
+        // Found one.
         havekids = 1;
         if(p->state == ZOMBIE){
-          // Found one.
           pid = p->pid;
           kfree(p->kstack);
           p->kstack = 0;
@@ -634,6 +635,7 @@ wait(void)
         p = p->next;
       }
     }
+
     #ifdef CS333_P4
     // Scan through all ready lists
     for(int i = MAXPRIO; i >= 0; i--){
@@ -644,29 +646,7 @@ wait(void)
           p = p->next;
           continue;
         }
-
         havekids = 1;
-        if(p->state == ZOMBIE){
-          // Found one.
-          pid = p->pid;
-          kfree(p->kstack);
-          p->kstack = 0;
-          freevm(p->pgdir);
-          p->pid = 0;
-          p->parent = 0;
-          p->name[0] = 0;
-          p->killed = 0;
-
-          if(stateListRemove(&ptable.list[ZOMBIE], p) < 0)
-            panic("Process is not in ZOMBIE list. wait");
-          assertState(p, ZOMBIE, __FILE__, __LINE__);
-
-          p->state = UNUSED;
-          stateListAdd(&ptable.list[UNUSED], p);
-
-          release(&ptable.lock);
-          return pid;
-        }
         p = p->next;
       }
     }
@@ -761,7 +741,6 @@ scheduler(void)
     #ifdef CS333_P4
     // Check if it is time to promote all ready procs
     if(ticks >= ptable.PromoteAtTime){
-//      cprintf("Promoting Procs...\n");
       promoteProcs();
 
       // update promote time
@@ -771,7 +750,7 @@ scheduler(void)
     // find a proc from one of the priority lists, starting with highest priority
     p = ptable.ready[MAXPRIO].head;
     // if no procs at max, check all other priority lists
-    if(p == NULL){
+    if(p == NULL && MAXPRIO > 0){
       for(int i = MAXPRIO-1; i >= 0 && p == NULL; i--)
         p = ptable.ready[i].head;
     }
@@ -920,16 +899,7 @@ yield(void)
 
   #ifdef CS333_P4
   // calculate new budget
-  int budget = curproc->budget - (ticks - curproc->cpu_ticks_in);
-
-  // determine if proc needs to be demoted
-  if(budget <= 0) {
-    if(curproc->priority > 0)
-      curproc->priority -= 1;
-    curproc->budget = DEFAULT_BUDGET;
-  }
-  else
-    curproc->budget = budget;
+  updateBudget(curproc);
 
   stateListAdd(&ptable.ready[curproc->priority], curproc);
   #else
@@ -1002,17 +972,7 @@ sleep(void *chan, struct spinlock *lk)
   assertState(p, RUNNING, __FILE__, __LINE__);
 
   #ifdef CS333_P4
-  // calculate new budget
-  int budget = p->budget - (ticks - p->cpu_ticks_in);
-
-  // determine if proc needs to be demoted
-  if(budget <= 0) {
-    if(p->priority > 0)
-      p->priority -= 1;
-    p->budget = DEFAULT_BUDGET;
-  }
-  else
-    p->budget = budget;
+  updateBudget(p);
   #endif
 
   p->state = SLEEPING;
@@ -1596,6 +1556,26 @@ zombieList(void)
 #endif
 
 #ifdef CS333_P4
+// helper function to allocate budget
+void
+updateBudget(struct proc* p)
+{
+  // make sure lock is being held
+  if(!holding(&ptable.lock))
+    panic("updateBudget ptable.lock");
+
+  // calculate new budget
+  int budget = p->budget - (ticks - p->cpu_ticks_in);
+
+  // determine if proc needs to be demoted
+  if(budget <= 0) {
+    if(p->priority > 0 && MAXPRIO > 0)
+      p->priority -= 1;
+    p->budget = DEFAULT_BUDGET;
+  }
+  else
+    p->budget = budget;
+}
 // helper function to promote ALL procs
 int
 promoteProcs()
@@ -1603,6 +1583,9 @@ promoteProcs()
   // make sure lock is being held
   if(!holding(&ptable.lock))
     panic("promoteProcs ptable.lock");
+
+  if(MAXPRIO == 0)
+    return 0;
 
   int totalpromoted = 0;
   struct proc *p = NULL;
@@ -1627,17 +1610,20 @@ promoteProcs()
 
   // update all ready list procs
   for(int i = MAXPRIO-1; i >= 0; i--){
+
     p = ptable.ready[i].head;
     struct proc *next = NULL;
 
     while(p != NULL){
       next = p->next;
-      if (stateListRemove(&ptable.ready[i], p) < 0)
+
+      if(stateListRemove(&ptable.ready[i], p) < 0)
         panic("Process is not in correct READY list. scheduler");
       assertState(p, RUNNABLE, __FILE__, __LINE__);
       p->priority += 1;
-      p->budget = DEFAULT_BUDGET;
       stateListAdd(&ptable.ready[p->priority], p);
+
+      p->budget = DEFAULT_BUDGET;
 
       p = next;
       totalpromoted++;
