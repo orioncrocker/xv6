@@ -1,11 +1,14 @@
+#ifdef CS333_P4
+int setpriority(int, int);
+int getpriority(int);
+#endif
 #ifdef CS333_P3
-#include "uproc.h"
 void readyList(void);
 void freeList(void);
 void sleepList(void);
 void zombieList(void);
-int getprocs(uint, struct uproc*);
-#elif defined (CS333_P2)
+#endif
+#ifdef CS333_P2
 #include "uproc.h"
 int getprocs(uint, struct uproc*);
 #endif
@@ -72,6 +75,10 @@ struct proc {
   #endif
   #ifdef CS333_P3
   struct proc *next;           // Next pointer for list format
+  #endif
+  #ifdef CS333_P4
+  int priority;
+  int budget;
   #endif
 };
 

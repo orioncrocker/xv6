@@ -23,10 +23,10 @@ testPromotion(void)
   }
 
   prio = getpriority(pid);
-
   sleep(TICKS_TO_PROMOTE + 100);
-
   newPrio = getpriority(pid);
+
+  printf(1, "Old Prio: %d, New Prio: %d\n", prio, newPrio);
 
   if (newPrio != prio && newPrio > prio) {
     printf(1, "Promotion has occurred.\n");

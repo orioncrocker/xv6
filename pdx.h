@@ -32,6 +32,12 @@
 #define statecount NELEM(states)
 #endif
 
+#ifdef CS333_P4
+#define MAXPRIO 2
+#define TICKS_TO_PROMOTE  5000
+#define DEFAULT_BUDGET 500
+#endif
+
 #define NPROC  64  // maximum number of processes -- normally in param.h
 
 #define min(a, b) ((a) < (b) ? (a) : (b))

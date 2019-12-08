@@ -1,3 +1,4 @@
+#ifdef CS333_P2
 #include "types.h"
 #define STRMAX 32
 
@@ -11,4 +12,8 @@ struct uproc {
   char state[STRMAX];
   uint size;
   char name[STRMAX];
+  #ifdef CS333_P4
+  uint priority;
+  #endif
 };
+#endif

@@ -90,7 +90,7 @@ runTest(int n){
     if(ret == -1)
       extra++;
     if(ret == 0) {
-      for(int i = 0; i < 100000000; i++);
+      for(int i = 0; i < 200000000; i++);
       exit();
     }
   }
@@ -142,7 +142,7 @@ int
 main(int argc, char *argv[]){
 
   // default number of procs to create in tests
-  int n = 10;
+  int n = 25;
 
   if(argc <= 1){
     zombieTest(n);

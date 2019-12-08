@@ -39,3 +39,6 @@ SYSCALL(getppid)
 SYSCALL(setuid)
 SYSCALL(setgid)
 SYSCALL(getprocs)
+// CS333_P4
+SYSCALL(setpriority)
+SYSCALL(getpriority)
