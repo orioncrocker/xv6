@@ -1,3 +1,10 @@
+# STOP!
+If you are a current Portland State University student and you've found this repository with the intention of copying code, please review [PSU's academic code of conduct](https://www.pdx.edu/dos/academic-misconduct-0).
+
+You are doing yourself a disservice by copying my code. Instead, please utilize the multiple resources that are already available to you such as [your professor](https://web.cecs.pdx.edu/~markem/CS333/), [on-campus tutors](https://www.pdx.edu/cecs/tutoring-schedule), or [the textbook](https://web.cecs.pdx.edu/~markem/CS333/xv6/xv6-book-rev10.pdf).
+
+## xv6
+
 xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
 Version 6 (v6).  xv6 loosely follows the structure and style of v6,
 but is implemented for a modern x86-based multiprocessor using ANSI C.
