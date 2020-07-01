@@ -1,7 +1,9 @@
 # STOP!
 If you are a current Portland State University student and you've found this repository with the intention of copying code, please review [PSU's academic code of conduct](https://www.pdx.edu/dos/academic-misconduct-0).
 
-You are doing yourself a disservice by copying my code. Instead, please utilize the multiple resources that are already available to you such as [your professor](https://web.cecs.pdx.edu/~markem/CS333/), [on-campus tutors](https://www.pdx.edu/cecs/tutoring-schedule), or [the textbook](https://web.cecs.pdx.edu/~markem/CS333/xv6/xv6-book-rev10.pdf).
+You are doing yourself a disservice by copying my code. Seriously. Instead, please utilize the multiple resources that are already available to you such as [your professor](https://web.cecs.pdx.edu/~markem/CS333/), [on-campus tutors](https://www.pdx.edu/cecs/tutoring-schedule), or [the textbook](https://web.cecs.pdx.edu/~markem/CS333/xv6/xv6-book-rev10.pdf).
+
+If you so choose to ignore this message and continue on your dishonest endeavor, I wish you the best of luck.
 
 ## xv6
 
